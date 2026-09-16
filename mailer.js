@@ -1,14 +1,16 @@
 import nodemailer from 'nodemailer';
 
-// Transportador SMTP usando Puerto 587 (Compatible con Render)
+// Transportador SMTP con Puerto 465 e IPv4 forzado para Render
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Debe ser false para el puerto 587 (usa STARTTLS)
+  port: 465,             // Cambiado a 465 (SSL directo)
+  secure: true,          // Cambiado a true para puerto 465
+  family: 4,             // 👈 EVITA EL ERROR IPv6 ENETUNREACH EN RENDER
   auth: {
     user: process.env.GMAIL_USER || 'informacion@novovet.cl',
     pass: process.env.GMAIL_PASS || 'ycuaygsqjrhnklzn'
   },
+  connectionTimeout: 10000,
   tls: {
     rejectUnauthorized: false
   }
