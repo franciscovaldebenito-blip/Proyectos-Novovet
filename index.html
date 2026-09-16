@@ -176,7 +176,7 @@
                     <th class="p-3">Fechas</th>
                     <th class="p-3">Estado</th>
                     <th class="p-3">Prioridad</th>
-                    <th class="p-3 text-right">Acción</th>
+                    <th class="p-3 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="ownProjectsTable" class="divide-y divide-gray-200"></tbody>
@@ -484,7 +484,18 @@
             </div>
           </div>
         </div>
-        <button onclick="cerrarModal()" class="text-white hover:text-gray-300 font-bold text-2xl">&times;</button>
+
+        <!-- BOTÓN ELIMINAR Y CERRAR MODAL -->
+        <div class="flex items-center gap-3">
+          <button 
+            onclick="eliminarProyecto(currentProjectId)" 
+            class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm"
+            title="Eliminar este proyecto"
+          >
+            🗑️ Eliminar Proyecto
+          </button>
+          <button onclick="cerrarModal()" class="text-white hover:text-gray-300 font-bold text-2xl">&times;</button>
+        </div>
       </div>
       
       <div class="p-6 space-y-6 overflow-y-auto">
@@ -574,7 +585,6 @@
       </div>
     </div>
   </div>
-
 
 
 
@@ -2577,6 +2587,30 @@ async function abrirGantt(projectId) {
 
 function cerrarModalGantt() {
   document.getElementById('modalGantt')?.classList.add('hidden');
+}
+
+async function eliminarProyecto(projectId) {
+  const confirmar = confirm('¿Estás seguro de que deseas eliminar este proyecto? Esta acción borrará permanentemente el proyecto y todas sus tareas/acciones asignadas.');
+  
+  if (!confirmar) return;
+
+  try {
+    const res = await fetch(`/api/projects/${projectId}`, {
+      method: 'DELETE',
+      headers: {
+        'x-user-id': localStorage.getItem('userId') // O el token/ID del usuario autenticado
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Error al eliminar el proyecto');
+
+    alert('Proyecto eliminado con éxito.');
+    location.reload(); // Recarga la vista para actualizar la lista
+  } catch (err) {
+    alert(`No se pudo eliminar: ${err.message}`);
+  }
 }
 
 
