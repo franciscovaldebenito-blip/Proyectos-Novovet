@@ -439,7 +439,7 @@
     </div>
   </div>
 
-  <!-- MODAL: DETALLE DE PROYECTO -->
+  <!-- MODAL: DETALLE DE PROYECTO (DUEÑO DEL PROYECTO) -->
   <div id="projectModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden border border-gray-200 flex flex-col max-h-[90vh]">
       <div class="bg-teal-900 text-white p-4 flex justify-between items-center shrink-0">
@@ -485,7 +485,7 @@
           </div>
         </div>
 
-        <!-- BOTÓN ELIMINAR Y CERRAR MODAL -->
+        <!-- BOTÓN ELIMINAR Y CERRAR MODAL PROYECTO -->
         <div class="flex items-center gap-3">
           <button 
             onclick="eliminarProyecto(currentProjectId)" 
@@ -528,15 +528,63 @@
             </button>
           </div>
           <div id="newTasksContainer" class="space-y-3 mb-4"></div>
+          
+          <!-- CONTENEDOR DE TAREAS DONDE CADA TARJETA INCLUYE EL BOTÓN ELIMINAR TAREA -->
           <div id="taskList" class="space-y-3">
-            <p class="text-xs text-gray-400 italic">Cargando tareas...</p>
+            <!-- Ejemplo de cómo renderizar el bloque de la tarea con su botón de eliminar asignado al dueño del proyecto -->
+            <div class="p-4 bg-white rounded-lg border border-slate-200 shadow-sm space-y-3">
+              <div class="flex justify-between items-start">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h5 class="font-bold text-slate-800 text-sm">Nombre de la Acción</h5>
+                    <span class="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">Alta</span>
+                  </div>
+                  <span class="text-xs text-slate-500">👤 Asignado a: Nombre Usuario</span>
+                </div>
+
+                <!-- CONTROLES DE LA ACCIÓN (BOTÓN ELIMINAR ACCIÓN A LA DERECHA) -->
+                <div class="flex items-center gap-2">
+                  <!-- Botón de Eliminar Tarea/Acción en la vista del Dueño del Proyecto -->
+                  <button 
+                    onclick="eliminarTarea(idTarea)" 
+                    class="bg-red-100 hover:bg-red-200 text-red-700 p-1.5 rounded-lg transition text-xs font-semibold flex items-center gap-1" 
+                    title="Eliminar Acción"
+                  >
+                    🗑️ <span class="hidden sm:inline">Eliminar</span>
+                  </button>
+
+                  <div class="flex items-center gap-1 text-xs">
+                    <span class="text-slate-400">📅</span>
+                    <input type="date" class="p-1 border rounded text-xs bg-white">
+                  </div>
+
+                  <select class="p-1 text-xs border rounded bg-white font-semibold">
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en proceso">En proceso</option>
+                    <option value="finalizado">Finalizado</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- BITÁCORA Y AVANCES DE LA ACCIÓN -->
+              <div class="bg-slate-50 p-2.5 rounded border border-slate-100 text-xs space-y-1.5">
+                <span class="font-bold text-slate-600 block">HISTORIAL / BITÁCORA DE LA ACCIÓN:</span>
+                <div class="bg-white p-2 rounded border max-h-24 overflow-y-auto text-slate-500 italic">
+                  Sin avances registrados.
+                </div>
+                <div class="flex gap-2 pt-1">
+                  <input type="text" placeholder="Anotar nuevo avance..." class="flex-1 p-1.5 border rounded outline-none text-xs">
+                  <button class="bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs px-3 py-1 rounded transition">Guardar</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: DETALLE DE TAREA / BITÁCORA -->
+  <!-- MODAL: DETALLE DE TAREA / BITÁCORA (PARA EL COLABORADOR / DUEÑO DE TAREA) -->
   <div id="taskDetailModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-gray-200 flex flex-col max-h-[90vh]">
       
@@ -546,6 +594,8 @@
             <span id="taskModalProjectName" class="text-xs uppercase tracking-wider text-teal-200 font-bold block">Proyecto</span>
             <h3 id="taskModalTitle" class="font-bold text-lg text-white leading-tight">Cargando Acción...</h3>
           </div>
+          
+          <!-- SOLO BOTÓN DE CERRAR -->
           <button onclick="cerrarModalTarea()" class="text-white hover:text-gray-300 font-bold text-xl leading-none">&times;</button>
         </div>
         
@@ -585,6 +635,8 @@
       </div>
     </div>
   </div>
+
+
 
 
 
@@ -1255,13 +1307,35 @@ async function guardarProyectoCompleto(e) {
   const userId = localStorage.getItem('userId') || localStorage.getItem('token');
   const owner = ownerElem && ownerElem.value ? ownerElem.value : userId;
 
-  // Validación: Solo exigimos el título (ya que si no hay owner en UI, se asigna userId)
+  const startDate = document.getElementById('newProjectStartDate')?.value;
+  const fechaTermino = document.getElementById('newProjectDueDate')?.value;
+
+  // 1. Validación de Título y Fechas del Proyecto
   if (!title) {
-    alert('Por favor ingresa un título para el proyecto.');
+    alert('⚠️ Por favor ingresa un título para el proyecto.');
     return;
   }
 
-  const fechaTermino = document.getElementById('newProjectDueDate')?.value || null;
+  if (!startDate || !fechaTermino) {
+    alert('⚠️ Debes ingresar la fecha de inicio y la fecha de término del proyecto.');
+    return;
+  }
+
+  // 2. Validación de Fechas en las Tareas/Acciones antes de procesar cualquier envío
+  const taskCards = document.querySelectorAll('.create-task-card');
+  for (const [index, card] of Array.from(taskCards).entries()) {
+    const taskTitle = card.querySelector('.task-title')?.value.trim();
+    const taskStartDate = card.querySelector('.task-start-date')?.value;
+    const taskDueDate = card.querySelector('.task-due-date')?.value;
+
+    if (taskTitle) {
+      if (!taskStartDate || !taskDueDate) {
+        alert(`⚠️ La acción "${taskTitle}" (Acción #${index + 1}) debe tener ambas fechas asignadas (inicio y término).`);
+        return; // Detiene la ejecución completa si falta alguna fecha en una acción
+      }
+    }
+  }
+
   const priorityElem = document.getElementById('newProjectPriority');
 
   const bodyProyecto = {
@@ -1270,7 +1344,7 @@ async function guardarProyectoCompleto(e) {
     user_id: owner,
     status: document.getElementById('newProjectStatus')?.value || 'PLANNING',
     priority: priorityElem ? priorityElem.value : 'media',
-    start_date: document.getElementById('newProjectStartDate')?.value || null,
+    start_date: startDate,
     end_date: fechaTermino,
     due_date: fechaTermino
   };
@@ -1290,19 +1364,18 @@ async function guardarProyectoCompleto(e) {
 
     const proyectoCreado = await resProj.json();
 
-    // Guardado de tareas asociadas
-    const taskCards = document.querySelectorAll('.create-task-card');
+    // 3. Guardado de tareas asociadas (ya habiendo validado sus fechas previamente)
     for (const card of taskCards) {
       const taskTitle = card.querySelector('.task-title')?.value.trim();
       if (taskTitle) {
         const taskBody = {
           project_id: proyectoCreado.id,
           title: taskTitle,
-          assigned_to: card.querySelector('.task-assignee')?.value || userId, // Si no asigna, se le asigna a sí mismo
+          assigned_to: card.querySelector('.task-assignee')?.value || userId,
           description: card.querySelector('.task-desc')?.value || '',
           priority: card.querySelector('.task-priority')?.value || 'media',
-          start_date: card.querySelector('.task-start-date')?.value || null,
-          due_date: card.querySelector('.task-due-date')?.value || null
+          start_date: card.querySelector('.task-start-date').value,
+          due_date: card.querySelector('.task-due-date').value
         };
 
         await fetch('/api/tasks', {
@@ -1611,6 +1684,9 @@ function formatearFechaLatina(fechaStr) {
       }
     }
 
+
+
+
 let activeTaskId = null;
 
 async function abrirModalTarea(taskId) {
@@ -1777,7 +1853,7 @@ async function agregarComentarioTarea(e) {
               <span class="text-[11px] text-teal-800 font-semibold block mt-0.5">👤 ${escapeHtml(nombreAsignado)}</span>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3 shrink-0">
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
               <!-- Selección de fechas con Calendario habilitado para Admin/Dueño -->
               <div class="flex items-center gap-1 bg-white p-1 rounded border border-gray-200">
                 <span class="text-[10px] text-gray-500 font-medium">📅 Inicio: ${inicioStr} | Fin:</span>
@@ -1794,6 +1870,17 @@ async function agregarComentarioTarea(e) {
                 <option value="pendiente" ${t.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
                 <option value="finalizado" ${t.status === 'finalizado' ? 'selected' : ''}>Finalizado</option>
               </select>
+
+              <!-- BOTÓN DE ELIMINAR ACCIÓN/TAREA -->
+              ${puedeEditar ? `
+                <button 
+                  onclick="eliminarTarea('${t.id}')" 
+                  title="Eliminar Acción" 
+                  class="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                >
+                  🗑️
+                </button>
+              ` : ''}
             </div>
           </div>
 
@@ -2613,6 +2700,42 @@ async function eliminarProyecto(projectId) {
   }
 }
 
+async function eliminarTarea(taskId) {
+  if (!confirm("⚠️ ¿Estás seguro de que deseas eliminar esta acción?")) return;
+
+  const token = localStorage.getItem('token');
+  const userId = localStorage.getItem('userId') || token;
+
+  try {
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'No se pudo eliminar la acción.');
+    }
+
+    alert('✅ Acción eliminada correctamente.');
+
+    // Recargar las listas para refrescar la pantalla
+    if (typeof cargarTareas === 'function' && currentProjectId) {
+      cargarTareas(currentProjectId);
+    }
+    if (typeof cargarAccionesEnProceso === 'function') {
+      cargarAccionesEnProceso();
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert('❌ ' + err.message);
+  }
+}
 
 
 </script>

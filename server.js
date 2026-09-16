@@ -140,7 +140,6 @@ app.get('/api/projects', verificarAutenticacion, async (req, res) => {
   }
 });
 
-// Crear un nuevo proyecto (+ Correo de notificación)
 app.post('/api/projects', verificarAutenticacion, async (req, res) => {
   const { 
     title, 
@@ -154,13 +153,18 @@ app.post('/api/projects', verificarAutenticacion, async (req, res) => {
     end_date 
   } = req.body;
   
+  // 🔴 VALIDACIONES EN BACKEND
   if (!title || title.trim() === '') {
     return res.status(400).json({ error: 'El título del proyecto es obligatorio' });
   }
 
+  const fechaFin = due_date || end_date;
+  if (!start_date || !fechaFin) {
+    return res.status(400).json({ error: 'Las fechas de inicio y término del proyecto son obligatorias' });
+  }
+
   try {
     const ownerId = (req.user.role === 'admin' && user_id) ? user_id : req.user.id;
-    const fechaFin = due_date || end_date;
 
     const { data, error } = await db
       .from('pm_projects')
@@ -171,8 +175,8 @@ app.post('/api/projects', verificarAutenticacion, async (req, res) => {
         user_id: ownerId,
         status: status || 'PLANNING',
         priority: priority || 'media',
-        start_date: start_date && start_date !== '' ? start_date : null,
-        due_date: fechaFin && fechaFin !== '' ? fechaFin : null
+        start_date: start_date,
+        due_date: fechaFin
       }])
       .select();
 
@@ -221,6 +225,7 @@ app.post('/api/projects', verificarAutenticacion, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // 3. BITÁCORA DEL PROYECTO (pm_project_comments)
 app.get('/api/projects/:projectId/comments', verificarAutenticacion, async (req, res) => {
@@ -515,6 +520,7 @@ app.get('/api/tasks/:id', verificarAutenticacion, async (req, res) => {
 });
 
 // Crear nueva acción (+ Correo de notificación con fecha formateada DD/MM/AAAA)
+// 2. RUTA DE TAREAS/ACCIONES (Actualizada con validación de fechas)
 app.post('/api/tasks', verificarAutenticacion, async (req, res) => {
   const { 
     project_id, 
@@ -527,18 +533,27 @@ app.post('/api/tasks', verificarAutenticacion, async (req, res) => {
     due_date 
   } = req.body;
 
+  // 🔴 VALIDACIONES EN BACKEND
+  if (!title || title.trim() === '') {
+    return res.status(400).json({ error: 'El título de la acción es obligatorio' });
+  }
+
+  if (!start_date || !due_date) {
+    return res.status(400).json({ error: 'Las fechas de inicio y término de la acción son obligatorias' });
+  }
+
   try {
     const { data, error } = await db
       .from('pm_tasks')
       .insert([{ 
         project_id, 
-        title, 
+        title: title.trim(), 
         description: description && description.trim() !== '' ? description.trim() : null,
         comments: comments && comments.trim() !== '' ? comments.trim() : null,
         priority: priority || 'low',
         assigned_to: assigned_to || null, 
-        start_date: start_date && start_date !== '' ? start_date : null,
-        due_date: due_date && due_date !== '' ? due_date : null, 
+        start_date: start_date, 
+        due_date: due_date, 
         status: 'pendiente' 
       }])
       .select();
@@ -970,6 +985,64 @@ app.patch('/api/tasks/:id/due-date', verificarAutenticacion, async (req, res) =>
     res.json(updatedTask[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Ruta para eliminar una acción/tarea con validación de dueño
+// Ruta para eliminar una tarea / acción (Solo el dueño del proyecto)
+app.delete('/api/tasks/:id', verificarAutenticacion, async (req, res) => {
+  const taskId = req.params.id;
+  const currentUserId = req.user.id; // ID del usuario autenticado obtenido por el middleware
+
+  try {
+    // 1. Obtener la tarea y el owner del proyecto asociado
+    const { data: task, error: taskError } = await db
+      .from('pm_tasks')
+      .select('id, project_id')
+      .eq('id', taskId)
+      .single();
+
+    if (taskError || !task) {
+      return res.status(404).json({ error: 'La acción o tarea no existe.' });
+    }
+
+    // 2. Obtener el proyecto para validar el dueño (user_id)
+    const { data: project, error: projError } = await db
+      .from('pm_projects')
+      .select('user_id')
+      .eq('id', task.project_id)
+      .single();
+
+    if (projError || !project) {
+      return res.status(404).json({ error: 'No se encontró el proyecto asociado.' });
+    }
+
+    // 3. Verificar si el usuario actual es el dueño del proyecto (o admin)
+    const esDuenioProyecto = String(project.user_id) === String(currentUserId);
+    const esAdmin = req.user.role === 'admin';
+
+    if (!esDuenioProyecto && !esAdmin) {
+      return res.status(403).json({ 
+        error: 'Permiso denegado. Solo el dueño del proyecto puede eliminar acciones.' 
+      });
+    }
+
+    // 4. Eliminar la tarea
+    const { error: deleteError } = await db
+      .from('pm_tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (deleteError) {
+      console.error('Error al eliminar tarea:', deleteError);
+      return res.status(400).json({ error: deleteError.message });
+    }
+
+    return res.status(200).json({ message: 'Acción eliminada con éxito.' });
+
+  } catch (err) {
+    console.error('Error en el servidor al eliminar tarea:', err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
