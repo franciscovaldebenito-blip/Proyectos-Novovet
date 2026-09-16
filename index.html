@@ -1,0 +1,2586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Proyectos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- ESTILOS PERSONALIZADOS -->
+  <style>
+    /* Asegura que los modales tengan Scroll si sobrepasan la pantalla */
+    .modal-scroll {
+      max-height: calc(100vh - 4rem);
+      overflow-y: auto;
+    }
+    /* Estilos para barras de desplazamiento personalizadas en tablas y modales */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800">
+
+  <!-- SCREEN DE LOGIN -->
+  <div id="loginScreen" class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md border border-gray-200">
+      <h2 class="text-2xl font-bold text-center text-teal-800 mb-6">Iniciar Sesión</h2>
+      <form onsubmit="login(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Correo Electrónico</label>
+          <input type="email" id="loginEmail" required class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Contraseña</label>
+          <input type="password" id="loginPassword" required class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-teal-600 outline-none text-sm">
+        </div>
+        <button type="submit" class="w-full bg-teal-800 text-white font-bold py-2.5 rounded-lg hover:bg-teal-900 transition">Ingresar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- APLICACIÓN PRINCIPAL -->
+  <div id="appContainer" class="hidden min-h-screen flex flex-col">
+    <header class="bg-teal-900 text-white p-4 flex justify-between items-center shadow">
+      <h1 class="text-xl font-bold">Gestión de Proyectos</h1>
+      <div class="flex items-center gap-4 text-sm">
+        <span id="userNameSpan"></span>
+        <span id="userRoleBadge" class="bg-teal-700 text-xs px-2 py-0.5 rounded uppercase font-semibold"></span>
+        <button onclick="logout()" class="bg-red-700 hover:bg-red-800 px-3 py-1 rounded text-xs transition">Salir</button>
+      </div>
+    </header>
+
+    <!-- NAVEGACIÓN POR PESTAÑAS Y SWITCH DE FILTRADO -->
+    <div class="bg-white border-b border-gray-200 px-6">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+        
+        <!-- Botones de Pestañas -->
+        <div class="flex gap-4 overflow-x-auto">
+          <button id="tabProjectsBtn" onclick="cambiarPestana('proyectos')" class="py-3 px-4 font-bold text-sm border-b-2 border-teal-800 text-teal-900 transition whitespace-nowrap">
+            📋 Lista de Proyectos
+          </button>
+          <button id="tabAccionesBtn" onclick="cambiarPestana('acciones')" class="py-3 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-teal-800 transition whitespace-nowrap">
+            ⚡ Acciones en Proceso
+          </button>
+          <button id="tabAccionesCerradasBtn" onclick="cambiarPestana('cerradas')" class="py-3 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-teal-800 transition whitespace-nowrap">
+            ✅ Acciones Cerradas
+          </button>
+          <button id="tabCreateBtn" onclick="cambiarPestana('crear')" class="py-3 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-teal-800 transition whitespace-nowrap">
+            ➕ Crear Nuevo Proyecto
+          </button>
+          <button id="tabAccesosBtn" onclick="cambiarPestana('accesos')" class="py-3 px-4 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-teal-800 transition whitespace-nowrap">
+            🔐 Gestión de Accesos
+          </button>
+        </div>
+
+        <!-- Switch para ocultar proyectos finalizados -->
+        <div class="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 self-start sm:self-center">
+          <span class="text-xs font-semibold text-slate-600 whitespace-nowrap">Ocultar finalizados</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="switchOcultarFinalizados" class="sr-only peer" onchange="toggleProyectosFinalizados()">
+            <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-800"></div>
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VISTA: ACCIONES CERRADAS -->
+    <div id="viewAccionesCerradas" class="w-full px-6 py-6 hidden">
+      <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden w-full">
+        <div class="p-4 bg-slate-50 border-b border-slate-200">
+          <h3 class="font-bold text-slate-800 text-sm">✅ Histórico de Acciones Finalizadas</h3>
+        </div>
+        <div class="overflow-x-auto w-full">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="p-3">Acción</th>
+                <th class="p-3">Proyecto</th>
+                <th class="p-3">Dueño del Proyecto</th>
+                <th class="p-3">Último Avance</th>
+                <th class="p-3">Fecha Cierre</th>
+                <th class="p-3 text-right">Detalle</th>
+              </tr>
+            </thead>
+            <tbody id="tablaAccionesCerradas" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="6" class="p-4 text-center text-xs text-slate-400 italic">Cargando acciones cerradas...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <main class="p-6 max-w-7xl mx-auto w-full space-y-6">
+      
+      <!-- VISTA 1: LISTA Y METRICAS COMPACTAS -->
+      <div id="viewProjects" class="space-y-6">
+        
+        <!-- METRICAS (TARJETAS COMPACTAS) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Proyectos</p>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="metricTotalProjects" class="text-2xl font-bold text-teal-900">0</span>
+              <span class="text-[10px] text-gray-400">Cerrados y abiertos</span>
+            </div>
+          </div>
+
+          <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Proyectos en Ejecución</p>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="metricActiveProjects" class="text-2xl font-bold text-amber-600">0</span>
+              <span class="text-[10px] text-gray-400">No cerrados</span>
+            </div>
+          </div>
+
+          <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Tareas</p>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="metricTotalTasks" class="text-2xl font-bold text-teal-900">0</span>
+              <span class="text-[10px] text-gray-400">Cerradas y abiertas</span>
+            </div>
+          </div>
+
+          <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Tareas en Ejecución</p>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="metricActiveTasks" class="text-2xl font-bold text-blue-600">0</span>
+              <span class="text-[10px] text-gray-400">En proceso</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABLAS DE PROYECTOS EN LISTA -->
+        <div class="space-y-6">
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-gray-100 text-gray-600 uppercase font-bold border-b">
+                  <tr>
+                    <th class="p-3">Proyecto</th>
+                    <th class="p-3">Dueño</th>
+                    <th class="p-3">Fechas</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">Prioridad</th>
+                    <th class="p-3 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="ownProjectsTable" class="divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-gray-50 px-4 py-3 border-b">
+              <h3 class="font-bold text-gray-700 text-base">Proyectos Asignados / Colaboraciones</h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-gray-100 text-gray-600 uppercase font-bold border-b">
+                  <tr>
+                    <th class="p-3">Acción</th>
+                    <th class="p-3">Proyecto</th>
+                    <th class="p-3">Dueño</th>
+                    <th class="p-3">Fechas</th>
+                    <th class="p-3">Último Update</th>
+                    <th class="p-3 text-right">Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="collabProjectsTable" class="divide-y divide-gray-200"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 2: ACCIONES EN PROCESO -->
+      <div id="viewAcciones" class="hidden">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-200">
+            <h3 class="font-bold text-slate-800 text-lg">Acciones en Proceso</h3>
+            <p class="text-xs text-slate-500">Seguimiento global de tareas pendientes y su avance por proyecto</p>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
+                <tr>
+                  <th class="p-3">Dueño Acción</th>
+                  <th class="p-3">Nombre Acción</th>
+                  <th class="p-3">Nombre Proyecto</th>
+                  <th class="p-3">Dueño Proyecto</th>
+                  <th class="p-3">Fechas</th>
+                  <th class="p-3">Última Act.</th>
+                  <th class="p-3">Estado</th>
+                  <th class="p-3 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-acciones-proceso-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 3: CREAR NUEVO PROYECTO -->
+      <div id="viewCreateProject" class="hidden bg-white p-6 rounded-xl shadow-sm border border-gray-200 max-w-3xl mx-auto space-y-6">
+        <h3 class="font-bold text-teal-900 text-lg border-b pb-3">Crear y Asignar Nuevo Proyecto</h3>
+        
+        <form id="createProjectForm" class="space-y-4 text-xs" onsubmit="guardarProyectoCompleto(event)">
+          <div>
+            <label class="block font-bold text-gray-700 uppercase mb-1">Nombre del Proyecto *</label>
+            <input type="text" id="newProjectTitle" required placeholder="Ej: Implementación Sistema Bodega" class="w-full p-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-teal-700">
+          </div>
+
+          <div>
+            <label class="block font-bold text-gray-700 uppercase mb-1">Descripción del Proyecto</label>
+            <textarea id="newProjectDesc" rows="3" placeholder="Detalles u objetivos principales del proyecto..." class="w-full p-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-teal-700"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block font-bold text-gray-700 uppercase mb-1">Asignar Dueño / Encargado *</label>
+              <select id="newProjectOwner" required class="w-full p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-teal-700">
+                <option value="">Cargando usuarios...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-gray-700 uppercase mb-1">Estado Inicial</label>
+              <select id="newProjectStatus" class="w-full p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-teal-700">
+                <option value="PLANNING">PLANNING</option>
+                <option value="EN PROCESO">EN PROCESO</option>
+                <option value="PAUSADO">PAUSADO</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-gray-700 uppercase mb-1">Prioridad</label>
+              <select id="newProjectPriority" class="w-full p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-teal-700">
+                <option value="alta">🔴 Alta</option>
+                <option value="media" selected>🟡 Media</option>
+                <option value="baja">🟢 Baja</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-bold text-gray-700 uppercase mb-1">Fecha Inicio</label>
+              <input type="date" id="newProjectStartDate" class="w-full p-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-teal-700">
+            </div>
+            <div>
+              <label class="block font-bold text-gray-700 uppercase mb-1">Fecha Término Estimada</label>
+              <input type="date" id="newProjectDueDate" class="w-full p-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-teal-700">
+            </div>
+          </div>
+
+          <div class="pt-4 border-t space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-teal-900 uppercase">Acciones / Tareas Iniciales</span>
+              <button type="button" onclick="agregarBloqueTareaCreacion()" class="bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition">
+                + Agregar Tareas
+              </button>
+            </div>
+            <div id="creationTasksList" class="space-y-3"></div>
+          </div>
+
+          <div class="pt-4 border-t flex justify-end items-center gap-3">
+            <button type="button" onclick="limpiarYCancelarCreacion()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-bold transition">
+              Cancelar
+            </button>
+            <button type="submit" class="px-5 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-lg font-bold transition">
+              Guardar Proyecto Completo
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- VISTA 4: GESTIÓN DE ACCESOS -->
+      <div id="viewAccesos" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-lg shadow-sm border border-slate-200 gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-800">Gestión de Accesos y Usuarios</h2>
+            <p class="text-sm text-slate-500">Crea nuevos usuarios, modifica roles/áreas y actualiza contraseñas</p>
+          </div>
+          <button onclick="openModalCrearUsuario()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+            + Crear Nuevo Usuario
+          </button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <th class="p-4">Usuario / Nombre</th>
+                  <th class="p-4">Email</th>
+                  <th class="p-4">Área</th>
+                  <th class="p-4">Rol</th>
+                  <th class="p-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODALES CON CAPA Z-INDEX Y SCROLL OPTIMIZADO -->
+
+  <!-- MODAL: CREAR / EDITAR USUARIO -->
+  <div id="modal-usuario" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md space-y-4 modal-scroll">
+      <h3 id="modal-usuario-title" class="text-lg font-bold text-slate-800">Crear Nuevo Usuario</h3>
+      <form id="form-usuario" onsubmit="guardarUsuario(event)" class="space-y-3">
+        <input type="hidden" id="user-id-edit">
+        <div>
+          <label class="block text-xs font-medium text-slate-700">Nombre Completo</label>
+          <input type="text" id="user-full-name" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-700">Correo Electrónico</label>
+          <input type="email" id="user-email" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-emerald-600">
+        </div>
+        <div id="container-user-password">
+          <label class="block text-xs font-medium text-slate-700">Contraseña</label>
+          <input type="password" id="user-password" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-emerald-600">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-700">Rol</label>
+            <select id="user-role" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-emerald-600 bg-white">
+              <option value="user">user</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700">Área</label>
+            <select id="user-area" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-emerald-600 bg-white">
+              <option value="">Seleccionar área...</option>
+              <option value="Logistica">Logistica</option>
+              <option value="facturacion">facturacion</option>
+              <option value="Ventas">Ventas</option>
+              <option value="Bodega">Bodega</option>
+              <option value="Administracion">Administracion</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModalUsuario()" class="px-4 py-2 border rounded-lg text-slate-600 text-sm">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-sm font-medium">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CAMBIAR CONTRASEÑA -->
+  <div id="modal-password" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4 modal-scroll">
+      <h3 class="text-lg font-bold text-slate-800">Cambiar Contraseña</h3>
+      <form onsubmit="guardarNuevaPassword(event)" class="space-y-3">
+        <input type="hidden" id="pass-user-id">
+        <div>
+          <label class="block text-xs font-medium text-slate-700">Nueva Contraseña</label>
+          <input type="password" id="new-password" required minlength="4" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-emerald-600">
+        </div>
+        <div class="flex justify-end space-x-2 pt-3">
+          <button type="button" onclick="closeModalPassword()" class="px-4 py-2 border rounded-lg text-slate-600 text-sm">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-sm font-medium">Actualizar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL CARTA GANTT -->
+  <div id="modalGantt" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-teal-900 text-white">
+        <h3 class="text-base font-bold flex items-center gap-2">📊 Carta Gantt de Seguimiento</h3>
+        <button onclick="cerrarModalGantt()" class="text-white/80 hover:text-white font-bold text-xl px-2">&times;</button>
+      </div>
+
+      <div class="p-6 overflow-x-auto overflow-y-auto">
+        <table class="w-full text-left border-collapse min-w-[800px]">
+          <thead>
+            <tr class="border-b-2 border-slate-300 text-xs font-extrabold text-slate-700 bg-slate-50">
+              <th class="p-3 w-1/4">PROYECTO / ACCIÓN</th>
+              <th class="p-3 w-1/6">DUEÑO</th>
+              <th class="p-3 w-28">ESTADO</th>
+              <th class="p-3">
+                <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-slate-600">
+                  <span>GLOSARIO / LÍNEA DE TIEMPO</span>
+                  <span>AVANCE REAL</span>
+                </div>
+                <div id="ganttScaleHeader" class="flex justify-between text-[10px] text-center font-bold text-slate-500 border-t pt-1">
+                  <!-- Se inyectan los días -->
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="ganttTableBody" class="divide-y divide-slate-100 text-xs">
+            <!-- Se inyectan filas dinámicamente -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALLE DE PROYECTO -->
+  <div id="projectModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden border border-gray-200 flex flex-col max-h-[90vh]">
+      <div class="bg-teal-900 text-white p-4 flex justify-between items-center shrink-0">
+        <div>
+          <h3 id="modalTitle" class="font-bold text-lg leading-tight">Detalle del Proyecto</h3>
+          <div class="flex flex-wrap items-center gap-3 text-xs mt-1 text-teal-100 font-medium">
+            <span>👤 Dueño: <strong id="modalOwnerName" class="text-white">---</strong></span>
+            <div class="flex items-center gap-1">
+              <span>📅 Fecha Cierre:</span>
+              <input 
+                type="date" 
+                id="modalProjectDueDateInput" 
+                class="p-1 text-xs border rounded bg-white text-gray-800 outline-none focus:ring-1 focus:ring-teal-700"
+                onchange="cambiarFechaCierreProyecto(currentProjectId, this.value)"
+              >
+            </div>
+
+            <div class="flex items-center gap-1 bg-teal-800/60 px-2 py-0.5 rounded border border-teal-700">
+              <span>⚡ Prioridad:</span>
+              <select 
+                id="modalProjectPriority" 
+                onchange="cambiarPrioridadProyecto(currentProjectId, this.value)"
+                class="bg-white text-teal-900 font-bold text-xs p-1 rounded outline-none cursor-pointer focus:ring-1 focus:ring-teal-500"
+              >
+                <option value="alta">🔴 Alta</option>
+                <option value="media">🟡 Media</option>
+                <option value="baja">🟢 Baja</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1 bg-teal-800/60 px-2 py-0.5 rounded border border-teal-700">
+              <span>📌 Estado:</span>
+              <select 
+                id="modalProjectStatus" 
+                onchange="cambiarEstadoProyecto(currentProjectId, this.value)"
+                class="bg-white text-teal-900 font-bold text-xs p-1 rounded outline-none cursor-pointer focus:ring-1 focus:ring-teal-500"
+              >
+                <option value="pendiente">Pendiente</option>
+                <option value="en_proceso">En Proceso</option>
+                <option value="finalizado">✅ Finalizado</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button onclick="cerrarModal()" class="text-white hover:text-gray-300 font-bold text-2xl">&times;</button>
+      </div>
+      
+      <div class="p-6 space-y-6 overflow-y-auto">
+        <div>
+          <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Descripción del Proyecto</label>
+          <p id="modalDesc" class="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border"></p>
+        </div>
+
+        <div class="bg-teal-50/50 p-4 rounded-xl border border-teal-100 space-y-2">
+          <label class="block text-xs font-bold text-teal-900 uppercase">Bitácora / Avances del Proyecto</label>
+          <div id="projectCommentsContainer" class="space-y-1.5 max-h-36 overflow-y-auto bg-white p-2.5 border rounded-lg">
+            <p class="text-xs text-gray-400 italic">Cargando historial...</p>
+          </div>
+          <div class="flex gap-2 pt-1">
+            <input type="text" id="projectCommentInput" placeholder="Anotar avance global sobre el proyecto..." class="flex-1 p-2 text-xs border rounded-lg bg-white outline-none focus:ring-2 focus:ring-teal-700">
+            <button onclick="guardarAvanceProyecto()" class="bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition">
+              Guardar Avance
+            </button>
+          </div>
+        </div>
+
+        <div class="border-t pt-4">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+              <h4 class="font-bold text-teal-900 text-sm uppercase">Acciones / Tareas del Proyecto</h4>
+              <span id="tasksCount" class="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-bold">0 acciones</span>
+            </div>
+            <button onclick="agregarFormularioTareaNuevaModal()" class="bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+              <span>+</span> Agregar Nueva Acción
+            </button>
+          </div>
+          <div id="newTasksContainer" class="space-y-3 mb-4"></div>
+          <div id="taskList" class="space-y-3">
+            <p class="text-xs text-gray-400 italic">Cargando tareas...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALLE DE TAREA / BITÁCORA -->
+  <div id="taskDetailModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-gray-200 flex flex-col max-h-[90vh]">
+      
+      <div class="bg-teal-900 text-white p-4 shrink-0">
+        <div class="flex justify-between items-start">
+          <div>
+            <span id="taskModalProjectName" class="text-xs uppercase tracking-wider text-teal-200 font-bold block">Proyecto</span>
+            <h3 id="taskModalTitle" class="font-bold text-lg text-white leading-tight">Cargando Acción...</h3>
+          </div>
+          <button onclick="cerrarModalTarea()" class="text-white hover:text-gray-300 font-bold text-xl leading-none">&times;</button>
+        </div>
+        
+        <div class="mt-2 pt-2 border-t border-teal-800/60 flex justify-between text-xs text-teal-100">
+          <span id="taskModalDates">📅 Fechas: --/--/----</span>
+          <span id="taskModalAssignee">👤 Asignado a: --</span>
+        </div>
+      </div>
+
+      <div class="p-5 space-y-4 overflow-y-auto">
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Estado de la Acción</label>
+          <select id="taskStatusSelect" onchange="actualizarEstadoTarea(this.value)" class="w-full p-2 text-xs border rounded-lg bg-white focus:ring-2 focus:ring-teal-700 outline-none">
+            <option value="planning">PLANNING</option>
+            <option value="pendiente">PENDIENTE</option>
+            <option value="en proceso">EN PROCESO</option>
+            <option value="finalizado">FINALIZADO</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Bitácora / Avances</label>
+          <div id="taskCommentsList" class="space-y-2 max-h-48 overflow-y-auto bg-gray-50 p-3 rounded-lg border text-xs">
+            <p class="text-gray-400 italic">Cargando avances...</p>
+          </div>
+        </div>
+
+        <form onsubmit="agregarComentarioTarea(event)" class="space-y-2 pt-2 border-t">
+          <label class="block text-xs font-bold text-gray-600 uppercase">Registrar Nuevo Avance</label>
+          <div class="flex gap-2">
+            <input type="text" id="newTaskCommentInput" placeholder="Escribe el avance..." required class="flex-1 p-2 text-xs border rounded-lg outline-none focus:ring-2 focus:ring-teal-700">
+            <button type="submit" class="bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs px-4 py-2 rounded-lg transition">
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+
+
+
+<script>
+    // --- VARIABLES GLOBALES ---
+    let currentProjectId = null;
+    let currentOwnerId = null;
+    let profilesList = [];
+    let selectedCreationOwnerId = null;
+    let listaUsuarios = [];
+
+    // --- FUNCIONES DE UTILIDAD ---
+    function formatFecha(fechaStr) {
+      if (!fechaStr) return 'S/F';
+      try {
+        const d = new Date(fechaStr);
+        return isNaN(d.getTime()) ? 'S/F' : d.toLocaleDateString('es-CL');
+      } catch (e) {
+        return 'S/F';
+      }
+    }
+
+
+async function cambiarEstadoProyecto(projectId, nuevoEstado) {
+  if (!projectId) return;
+
+  try {
+    const res = await fetch(`/api/projects/${projectId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getHeaders()
+      },
+      body: JSON.stringify({ status: nuevoEstado })
+    });
+
+    if (!res.ok) throw new Error('Error al actualizar estado del proyecto');
+
+    // Recarga la tabla de proyectos y refresca los KPIs en tiempo real
+    await cargarProyectos();
+    
+    // Si tienes activa la vista de acciones/proyectos cerrados, la refresca también
+    if (typeof cargarAccionesCerradas === 'function') {
+      cargarAccionesCerradas();
+    }
+
+  } catch (err) {
+    console.error('Error al cambiar estado del proyecto:', err);
+    alert('Ocurrió un error al intentar cambiar el estado del proyecto.');
+  }
+}
+
+    function badgePrioridad(prio) {
+      const p = (prio || 'low').toLowerCase();
+      if (p === 'high' || p === 'alta') return '<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Alta</span>';
+      if (p === 'medium' || p === 'media') return '<span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Media</span>';
+      return '<span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Baja</span>';
+    }
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+
+
+
+
+// Cargar la lista de perfiles/usuarios globales para rellenar los desplegables
+async function cargarPerfilesParaCreacion() {
+  try {
+    const res = await fetch('/api/profiles', { headers: getHeaders() });
+    if (res.ok) {
+      profilesList = await res.json();
+      const ownerSelect = document.getElementById('newProjectOwner');
+      if (ownerSelect) {
+        ownerSelect.innerHTML = '<option value="">Seleccionar responsable...</option>' +
+          profilesList.map(p => `<option value="${p.id}">${escapeHtml(p.full_name || p.email)}</option>`).join('');
+      }
+    }
+  } catch (e) {
+    console.error("Error al cargar perfiles:", e);
+  }
+}
+
+// Escuchar cambios en el selector de dueño para actualizar nuevas tareas creadas
+document.getElementById('newProjectOwner')?.addEventListener('change', (e) => {
+  selectedCreationOwnerId = e.target.value;
+});
+
+// --- CONTROL DE PERMISOS SEGÚN ROL ---
+function aplicarPermisosPorRol() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const esUser = (user.role || '').toLowerCase() === 'user';
+
+  const tabCreateBtn = document.getElementById('tabCreateBtn');
+  const tabAccesosBtn = document.getElementById('tabAccesosBtn') || document.getElementById('tab-accesos');
+  const tabAccionesBtn = document.getElementById('tabAccionesBtn');
+
+  if (esUser) {
+    // Permitir crear proyectos a usuarios comunes
+    if (tabCreateBtn) tabCreateBtn.classList.remove('hidden');
+
+    // Ocultar vistas globales/administrativas
+    if (tabAccionesBtn) tabAccionesBtn.classList.add('hidden');
+    if (tabAccesosBtn) tabAccesosBtn.classList.add('hidden');
+  } else {
+    // El administrador ve todo el menú
+    if (tabCreateBtn) tabCreateBtn.classList.remove('hidden');
+    if (tabAccionesBtn) tabAccionesBtn.classList.remove('hidden');
+    if (tabAccesosBtn) tabAccesosBtn.classList.remove('hidden');
+  }
+}
+
+
+    // --- CONTROL DE NAVEGACIÓN Y PESTAÑAS ---
+    // --- CABECERA SEGURA DE AUTENTICACIÓN ---
+function getHeaders() {
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      let userId = localStorage.getItem('userId');
+
+      if (!userId && userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          userId = user.id;
+        } catch (e) {
+          console.error('Error parseando user de localStorage', e);
+        }
+      }
+
+      return {
+        'Content-Type': 'application/json',
+        'x-user-id': userId || token || ''
+      };
+    }
+
+   // 2. Control de navegación entre pestañas
+function cambiarPestana(pestana) {
+  const views = {
+    proyectos: document.getElementById('viewProjects'),
+    acciones: document.getElementById('viewAcciones'),
+    cerradas: document.getElementById('viewAccionesCerradas'),
+    crear: document.getElementById('viewCreateProject'),
+    accesos: document.getElementById('viewAccesos')
+  };
+
+  const tabs = {
+    proyectos: document.getElementById('tabProjectsBtn'),
+    acciones: document.getElementById('tabAccionesBtn'),
+    cerradas: document.getElementById('tabAccionesCerradasBtn'),
+    crear: document.getElementById('tabCreateBtn'),
+    accesos: document.getElementById('tabAccesosBtn')
+  };
+
+  // Ocultar todas las secciones
+  Object.values(views).forEach(v => v && v.classList.add('hidden'));
+
+  // Desmarcar todas las solapas
+  Object.values(tabs).forEach(t => {
+    if (t) {
+      t.classList.remove('border-teal-800', 'text-teal-900', 'font-bold');
+      t.classList.add('border-transparent', 'text-gray-500');
+    }
+  });
+
+  // Activar vista y pestaña seleccionada
+  if (views[pestana]) views[pestana].classList.remove('hidden');
+  if (tabs[pestana]) tabs[pestana].classList.add('border-teal-800', 'text-teal-900', 'font-bold');
+
+  // Cargar datos del backend según pestaña
+  if (pestana === 'proyectos' && typeof cargarProyectos === 'function') cargarProyectos();
+  if (pestana === 'acciones' && typeof cargarAccionesEnProceso === 'function') cargarAccionesEnProceso();
+  if (pestana === 'cerradas' && typeof cargarAccionesCerradas === 'function') cargarAccionesCerradas();
+  if (pestana === 'accesos' && typeof loadUsersView === 'function') loadUsersView();
+}
+
+function checkAuth() {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          document.getElementById('loginScreen').classList.add('hidden');
+          document.getElementById('appContainer').classList.remove('hidden');
+          document.getElementById('userNameSpan').textContent = user.nombre || user.email;
+          document.getElementById('userRoleBadge').textContent = user.rol || 'USER';
+          
+          // Cargar vista inicial
+          cambiarPestana('proyectos');
+        } catch (e) {
+          logout();
+        }
+      } else {
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('appContainer').classList.add('hidden');
+      }
+    }
+
+async function cargarAccionesCerradas() {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const esAdmin = (user.role || '').toLowerCase() === 'admin';
+  const tbody = document.getElementById('tablaAccionesCerradas');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/tasks/completed', { headers: { 'x-user-id': token } });
+    if (!res.ok) throw new Error('Error al obtener acciones cerradas');
+
+    let tareas = await res.json();
+
+    if (!esAdmin) {
+      tareas = tareas.filter(t => String(t.assigned_to) === String(user.id));
+    }
+
+    if (!tareas.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-xs text-slate-400 italic">No hay acciones cerradas actualmente.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = tareas.map(t => {
+      const nombreAccion = escapeHtml(t.title || 'Sin Título');
+      const nombreProyecto = escapeHtml(t.pm_projects?.title || 'Proyecto Sin Nombre');
+      const duenoProyecto = escapeHtml(t.pm_projects?.pm_profiles?.full_name || 'Sin Asignar');
+
+      let ultimoComentarioTexto = 'Sin avances registrados';
+      if (Array.isArray(t.pm_comments) && t.pm_comments.length > 0) {
+        const comentariosOrdenados = [...t.pm_comments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        ultimoComentarioTexto = comentariosOrdenados[0].text || 'Sin avances registrados';
+      }
+
+      const fechaCierre = typeof formatFecha === 'function' ? formatFecha(t.due_date) : (t.due_date ? t.due_date.split('T')[0] : 'S/F');
+      const taskId = t.id;
+
+      return `
+        <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100 text-xs">
+          <td class="p-3 font-semibold text-teal-900">${nombreAccion}</td>
+          <td class="p-3 text-slate-600">${nombreProyecto}</td>
+          <td class="p-3 text-slate-600">${duenoProyecto}</td>
+          <td class="p-3 text-slate-500 max-w-xs truncate" title="${escapeHtml(ultimoComentarioTexto)}">${escapeHtml(ultimoComentarioTexto)}</td>
+          <td class="p-3 text-slate-600 whitespace-nowrap font-mono">📅 ${fechaCierre}</td>
+          <td class="p-3 text-right whitespace-nowrap">
+            <button 
+              onclick="abrirModalTarea('${taskId}')" 
+              class="bg-teal-800 hover:bg-teal-900 text-white font-semibold text-xs px-2.5 py-1 rounded transition">
+              Ver Detalle / Bitácora
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error en cargarAccionesCerradas:', err);
+    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-xs text-red-500 italic">Error al cargar las acciones cerradas.</td></tr>';
+  }
+}
+    // --- AUTENTICACIÓN ---
+    async function login(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) return alert(data.error || 'Error al iniciar sesión');
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        mostrarApp();
+      } catch (err) {
+        alert('Error de conexión con el servidor.');
+      }
+    }
+
+   function logout() {
+      localStorage.clear();
+      window.location.reload();
+    }
+
+    // Ejecutar verificación de sesión al cargar la página
+    document.addEventListener('DOMContentLoaded', checkAuth);
+
+    async function mostrarApp() {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('appContainer').classList.remove('hidden');
+      
+      const nameSpan = document.getElementById('userNameSpan');
+      const roleBadge = document.getElementById('userRoleBadge');
+      if (nameSpan) nameSpan.textContent = user.full_name || user.email;
+      if (roleBadge) roleBadge.textContent = user.role;
+      
+      aplicarPermisosPorRol();
+      await cargarPerfiles();
+      cargarProyectos();
+    }
+
+    // --- PROYECTOS Y TAREAS ---
+    async function cargarPerfiles() {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch('/api/profiles', { headers: { 'x-user-id': token } });
+        if (res.ok) {
+          profilesList = await res.json();
+          
+          const selectOwner = document.getElementById('newProjectOwner');
+          if (selectOwner) {
+            selectOwner.innerHTML = '<option value="">Seleccionar responsable...</option>' + profilesList.map(p => 
+              `<option value="${p.id}">${escapeHtml(p.full_name || p.email)}</option>`
+            ).join('');
+          }
+        }
+      } catch (err) {
+        console.error('Error al cargar perfiles:', err);
+      }
+    }
+
+async function cargarProyectos() {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const esAdmin = (user.role || '').toLowerCase() === 'admin';
+    const miNombre = (user.full_name || user.name || '').toLowerCase().trim();
+    const miId = String(user.id || '');
+
+    // 1. Consulta paralela
+    const [resProjects, resInProgress, resCompleted] = await Promise.all([
+      fetch('/api/projects', { headers: getHeaders() }),
+      fetch('/api/tasks/in-progress', { headers: getHeaders() }),
+      fetch('/api/tasks/completed', { headers: getHeaders() })
+    ]);
+
+    if (!resProjects.ok) return;
+
+    const responseData = await resProjects.json();
+    const ownProjects = responseData.own || (Array.isArray(responseData) ? responseData : []);
+    
+    const todasTareasEnProceso = resInProgress.ok ? await resInProgress.json() : [];
+    const todasTareasCompletadas = resCompleted.ok ? await resCompleted.json() : [];
+
+    // 2. Guardar globalmente y ejecutar el filtrado según el estado del switch
+    window.proyectosCargados = ownProjects;
+    toggleProyectosFinalizados(); // <-- Renderiza la tabla propia aplicando el switch
+
+    // 3. FILTRADO ESTRICTO DE MIS TAREAS ASIGNADAS
+    const misTareasEnProceso = todasTareasEnProceso.filter(t => {
+      const idCoincide = t.assigned_to && String(t.assigned_to) === miId;
+      const nombreAsignado = (t.assigned_to_name || t.assigned_profile?.full_name || '').toLowerCase().trim();
+      const nombreCoincide = miNombre !== '' && nombreAsignado.includes(miNombre);
+      return idCoincide || nombreCoincide;
+    });
+
+    // 4. Renderizar Tabla de "Proyectos Asignados / Colaboraciones"
+    const collabTable = document.getElementById('collabProjectsTable');
+    if (collabTable) {
+      if (misTareasEnProceso.length === 0) {
+        collabTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 italic">No tienes acciones pendientes asignadas.</td></tr>`;
+      } else {
+        collabTable.innerHTML = misTareasEnProceso.map(t => `
+          <tr class="border-b hover:bg-gray-50">
+            <td class="p-3 font-bold text-teal-900">${escapeHtml(t.task_title || t.title)}</td>
+            <td class="p-3">${escapeHtml(t.project_title || t.pm_projects?.title || '')}</td>
+            <td class="p-3">${escapeHtml(t.project_owner || t.pm_projects?.pm_profiles?.full_name || '---')}</td>
+            <td class="p-3">📅 ${formatearFechaLatina(t.due_date)}</td>
+            <td class="p-3">${t.updated_at ? formatearFechaLatina(t.updated_at) : '---'}</td>
+            <td class="p-3 flex items-center justify-between gap-2">
+              <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-100 text-yellow-800">${t.status || 'pendiente'}</span>
+              <button onclick="abrirModalTarea('${t.task_id || t.id}')" class="bg-teal-700 hover:bg-teal-800 text-white font-bold px-2 py-1 rounded text-[11px]">
+                Ver Tarea / Bitácora
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 5. CÁLCULO DE MÉTRICAS / KPIS
+    const totalProyectos = ownProjects.length;
+    const proyectosEjecucion = ownProjects.filter(p => {
+      const st = (p.status || p.estado || '').toLowerCase();
+      return st !== 'finalizado' && st !== 'cerrado';
+    }).length;
+
+    let totalTareasMetrica = todasTareasEnProceso.length + todasTareasCompletadas.length;
+    let tareasEnEjecucionMetrica = todasTareasEnProceso.length;
+
+    if (!esAdmin) {
+      const misCompletadas = todasTareasCompletadas.filter(t => {
+        const idCoincide = t.assigned_to && String(t.assigned_to) === miId;
+        const nombreAsignado = (t.assigned_to_name || t.assigned_profile?.full_name || '').toLowerCase().trim();
+        return idCoincide || (miNombre !== '' && nombreAsignado.includes(miNombre));
+      }).length;
+
+      tareasEnEjecucionMetrica = misTareasEnProceso.length;
+      totalTareasMetrica = misTareasEnProceso.length + misCompletadas;
+    }
+
+    // Inyección en las tarjetas
+    const elemTotalProj = document.getElementById('metricTotalProjects');
+    const elemActiveProj = document.getElementById('metricActiveProjects');
+    const elemTotalTasks = document.getElementById('metricTotalTasks');
+    const elemActiveTasks = document.getElementById('metricActiveTasks');
+
+    if (elemTotalProj) elemTotalProj.textContent = totalProyectos;
+    if (elemActiveProj) elemActiveProj.textContent = proyectosEjecucion;
+    if (elemTotalTasks) elemTotalTasks.textContent = totalTareasMetrica;
+    if (elemActiveTasks) elemActiveTasks.textContent = tareasEnEjecucionMetrica;
+
+  } catch (e) {
+    console.error("Error al cargar proyectos y métricas:", e);
+  }
+}
+
+// FUNCIONES AUXILIARES PARA EL SWITCH
+function getPriorityBadge(priority) {
+  const p = (priority || 'media').toLowerCase();
+  if (p === 'alta') return `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-800">🔴 Alta</span>`;
+  if (p === 'baja') return `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800">🟢 Baja</span>`;
+  return `<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800">🟡 Media</span>`;
+}
+
+function toggleProyectosFinalizados() {
+  const switchElem = document.getElementById('switchOcultarFinalizados');
+  const ocultar = switchElem ? switchElem.checked : false;
+  const lista = window.proyectosCargados || [];
+
+  const filtrados = lista.filter(p => {
+    if (!ocultar) return true;
+    const st = (p.status || p.estado || '').toLowerCase().trim();
+    return st !== 'finalizado' && st !== 'cerrado';
+  });
+
+  renderTablaOwnProjects(filtrados);
+}
+
+function renderTablaOwnProjects(proyectos) {
+  const ownTable = document.getElementById('ownProjectsTable');
+  if (!ownTable) return;
+
+  if (proyectos.length === 0) {
+    ownTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 italic">No hay proyectos para mostrar.</td></tr>`;
+    return;
+  }
+
+  ownTable.innerHTML = proyectos.map(p => `
+    <tr class="border-b hover:bg-gray-50">
+      <td class="p-3">
+        <div class="font-bold text-gray-800">${escapeHtml(p.title)}</div>
+        <div class="text-[10px] text-gray-500">${escapeHtml(p.description || '')}</div>
+      </td>
+      <td class="p-3">${escapeHtml(p.pm_profiles?.full_name || p.owner_name || '---')}</td>
+      <td class="p-3">📅 ${formatearFechaLatina(p.start_date)} - ${formatearFechaLatina(p.due_date)}</td>
+      <td class="p-3"><span class="px-2 py-0.5 text-[10px] font-bold rounded bg-gray-100 text-gray-700">${p.status || p.estado || 'PLANNING'}</span></td>
+      <td class="p-3">${getPriorityBadge(p.priority)}</td>
+      <td class="p-3 text-right">
+        <div class="flex items-center justify-end gap-2">
+          <button onclick="abrirProyecto('${p.id}')" class="bg-teal-800 hover:bg-teal-900 text-white font-bold px-3 py-1 rounded text-xs whitespace-nowrap">
+            Ver Acciones / Bitácora
+          </button>
+          <button onclick="abrirGantt('${p.id}')" title="Ver Gantt" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded text-xs whitespace-nowrap flex items-center gap-1">
+            📊 Gantt
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function cambiarPrioridadProyecto(projectId, nuevaPrioridad) {
+  if (!projectId) return;
+
+  try {
+    const res = await fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH', // O PUT según el estándar de tu backend
+      headers: getHeaders(),
+      body: JSON.stringify({ priority: nuevaPrioridad })
+    });
+
+    if (!res.ok) throw new Error('Error al actualizar la prioridad');
+
+    // Actualizar la lista de fondo sin cerrar el modal
+    await cargarProyectos();
+  } catch (err) {
+    console.error('Error al cambiar la prioridad:', err);
+    alert('No se pudo actualizar la prioridad del proyecto.');
+  }
+}
+
+
+
+async function verDetalleProyecto(projectId) {
+  const modal = document.getElementById('projectModal');
+  if (!modal) return;
+
+  try {
+    const res = await fetch(`/api/projects/${projectId}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error("Error al obtener datos del proyecto");
+    
+    const project = await res.json();
+
+    document.getElementById('modalTitle').textContent = project.title || 'Detalle del Proyecto';
+    document.getElementById('modalOwnerName').textContent = project.pm_profiles?.full_name || 'Sin asignar';
+    document.getElementById('modalDates').textContent = `📅 ${project.start_date || 'S/F'} - ${project.due_date || 'S/F'}`;
+    document.getElementById('modalDesc').textContent = project.description || 'Sin descripción';
+
+    modal.dataset.projectId = projectId;
+
+    if (typeof cargarComentariosProyecto === 'function') cargarComentariosProyecto(projectId);
+    if (typeof cargarTareasProyecto === 'function') cargarTareasProyecto(projectId);
+
+    modal.classList.remove('hidden');
+  } catch (e) {
+    console.error("Error al abrir proyecto:", e);
+    alert("No se pudo abrir el detalle del proyecto.");
+  }
+}
+
+// Función auxiliar para cerrar el modal
+function cerrarModal() {
+  const modal = document.getElementById('projectModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+    function renderKPIs(proyectos) {
+      const kpiTotal = document.getElementById('kpiTotal');
+      if (kpiTotal) kpiTotal.textContent = proyectos.length;
+      
+      const cerrados = proyectos.filter(p => (p.status || '').toLowerCase() === 'finalizado').length;
+      const kpiFinalizados = document.getElementById('kpiFinalizados');
+      if (kpiFinalizados) kpiFinalizados.textContent = cerrados;
+
+      const areasMap = {};
+      proyectos.forEach(p => {
+        const area = p.pm_profiles?.area || 'Sin Área';
+        areasMap[area] = (areasMap[area] || 0) + 1;
+      });
+
+      const kpiAreasElem = document.getElementById('kpiAreas');
+      if (kpiAreasElem) {
+        kpiAreasElem.innerHTML = Object.entries(areasMap)
+          .map(([area, count]) => `<div class="flex justify-between border-b pb-0.5"><span>${escapeHtml(area)}:</span><strong class="text-teal-900">${count}</strong></div>`)
+          .join('') || '<p class="text-gray-400 italic">Sin datos</p>';
+      }
+    }
+
+    function renderTabla(lista, tbodyId) {
+      const tbody = document.getElementById(tbodyId);
+      if (!tbody) return;
+
+      if (!lista || !lista.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-xs text-gray-400 italic">No hay proyectos para mostrar.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = lista.map(p => {
+        const dueno = p.pm_profiles?.full_name || p.pm_profiles?.email || 'Sin Dueño';
+        const fechaInicio = formatFecha(p.start_date);
+        const fechaFin = formatFecha(p.due_date || p.end_date);
+
+        return `
+          <tr class="hover:bg-gray-50 transition border-b border-gray-100 text-xs">
+            <td class="p-3">
+              <strong class="text-teal-900 font-bold block">${escapeHtml(p.title)}</strong>
+              <span class="text-[11px] text-gray-500 line-clamp-1">${escapeHtml(p.description || '')}</span>
+            </td>
+            <td class="p-3 text-gray-600 font-medium">${escapeHtml(dueno)}</td>
+            <td class="p-3 text-gray-600 whitespace-nowrap">📅 ${fechaInicio} - ${fechaFin}</td>
+            <td class="p-3">
+              <span class="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-bold uppercase">${p.status || 'PLANNING'}</span>
+            </td>
+            <td class="p-3 text-right whitespace-nowrap">
+             <button 
+  onclick="abrirProyecto('${p.id}', '${escapeHtml(p.title)}', '${escapeHtml(p.description || '')}', '${p.user_id}', '${escapeHtml(dueno)}', '${p.start_date || ''}', '${p.due_date || ''}')" 
+  class="bg-teal-800 hover:bg-teal-900 text-white font-semibold text-xs px-2.5 py-1 rounded transition">
+  Ver Acciones / Bitácora
+</button>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+   function limpiarYCancelarCreacion() {
+  document.getElementById('createProjectForm').reset();
+  document.getElementById('creationTasksList').innerHTML = '';
+  selectedCreationOwnerId = null;
+  cambiarPestana('proyectos');
+}
+
+function agregarBloqueTareaCreacion() {
+  const container = document.getElementById('creationTasksList');
+  if (!container) return;
+  
+  const cardId = 'createTaskCard_' + Date.now();
+
+  const optionsUsers = profilesList.length > 0 
+    ? profilesList.map(p => {
+        const isOwner = p.id === selectedCreationOwnerId;
+        return `<option value="${p.id}" ${isOwner ? 'selected' : ''}>${escapeHtml(p.full_name || p.email)} ${isOwner ? '(Dueño)' : ''}</option>`;
+      }).join('')
+    : '<option value="">Sin usuarios cargados</option>';
+
+  const formHtml = `
+    <div id="${cardId}" class="create-task-card bg-gray-50 p-3 rounded-lg border-2 border-teal-600/30 space-y-2 text-xs">
+      <div class="flex justify-between items-center font-bold text-teal-900 border-b pb-1">
+        <span>Acción A Agregar</span>
+        <button type="button" onclick="document.getElementById('${cardId}').remove()" class="text-red-600 hover:text-red-800 font-bold">&times; Eliminar</button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Acción *</label>
+          <input type="text" class="task-title w-full p-2 text-xs border rounded outline-none focus:ring-1 focus:ring-teal-700" placeholder="Nombre de la acción..." required>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">A quién *</label>
+          <select class="task-assignee w-full p-2 text-xs border rounded bg-white outline-none focus:ring-1 focus:ring-teal-700">
+            ${optionsUsers}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-gray-500 uppercase">Descripción</label>
+        <textarea rows="2" class="task-desc w-full p-2 text-xs border rounded outline-none focus:ring-1 focus:ring-teal-700" placeholder="Descripción detallada de la acción..."></textarea>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 pt-1">
+        <div class="flex items-center gap-1">
+          <span class="text-[11px] text-gray-500 font-medium">Prioridad:</span>
+          <select class="task-priority p-1.5 text-xs border rounded bg-white font-semibold outline-none">
+            <option value="low" selected>Baja</option>
+            <option value="medium">Media</option>
+            <option value="high">Alta</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <span class="text-[11px] text-gray-500 font-medium">Inicio:</span>
+          <input type="date" class="task-start-date p-1.5 text-xs border rounded outline-none bg-white">
+        </div>
+
+        <div class="flex items-center gap-1">
+          <span class="text-[11px] text-gray-500 font-medium">Fin:</span>
+          <input type="date" class="task-due-date p-1.5 text-xs border rounded outline-none bg-white">
+        </div>
+      </div>
+    </div>
+  `;
+
+  container.insertAdjacentHTML('beforeend', formHtml);
+}
+
+async function guardarProyectoCompleto(e) {
+  e.preventDefault();
+
+  const title = document.getElementById('newProjectTitle')?.value.trim();
+  const ownerElem = document.getElementById('newProjectOwner');
+  
+  // Si existe el selector toma su valor; de lo contrario toma el ID del usuario en sesión
+  const userId = localStorage.getItem('userId') || localStorage.getItem('token');
+  const owner = ownerElem && ownerElem.value ? ownerElem.value : userId;
+
+  // Validación: Solo exigimos el título (ya que si no hay owner en UI, se asigna userId)
+  if (!title) {
+    alert('Por favor ingresa un título para el proyecto.');
+    return;
+  }
+
+  const fechaTermino = document.getElementById('newProjectDueDate')?.value || null;
+  const priorityElem = document.getElementById('newProjectPriority');
+
+  const bodyProyecto = {
+    title: title,
+    description: document.getElementById('newProjectDesc')?.value || '',
+    user_id: owner,
+    status: document.getElementById('newProjectStatus')?.value || 'PLANNING',
+    priority: priorityElem ? priorityElem.value : 'media',
+    start_date: document.getElementById('newProjectStartDate')?.value || null,
+    end_date: fechaTermino,
+    due_date: fechaTermino
+  };
+
+  try {
+    const resProj = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+      body: JSON.stringify(bodyProyecto)
+    });
+
+    if (!resProj.ok) {
+      const err = await resProj.json();
+      alert('Error al crear proyecto: ' + (err.error || 'Intenta de nuevo'));
+      return;
+    }
+
+    const proyectoCreado = await resProj.json();
+
+    // Guardado de tareas asociadas
+    const taskCards = document.querySelectorAll('.create-task-card');
+    for (const card of taskCards) {
+      const taskTitle = card.querySelector('.task-title')?.value.trim();
+      if (taskTitle) {
+        const taskBody = {
+          project_id: proyectoCreado.id,
+          title: taskTitle,
+          assigned_to: card.querySelector('.task-assignee')?.value || userId, // Si no asigna, se le asigna a sí mismo
+          description: card.querySelector('.task-desc')?.value || '',
+          priority: card.querySelector('.task-priority')?.value || 'media',
+          start_date: card.querySelector('.task-start-date')?.value || null,
+          due_date: card.querySelector('.task-due-date')?.value || null
+        };
+
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+          body: JSON.stringify(taskBody)
+        });
+      }
+    }
+
+    alert('Proyecto y acciones guardados exitosamente.');
+    limpiarYCancelarCreacion();
+    
+    if (typeof cargarProyectos === 'function') {
+      await cargarProyectos();
+    }
+    
+    cambiarPestana('proyectos');
+  } catch (error) {
+    console.error(error);
+    alert('Ocurrió un error al procesar la solicitud.');
+  }
+}
+
+  async function abrirProyecto(id) {
+  const listaProyectos = window.proyectosCargados || [];
+  const project = listaProyectos.find(p => String(p.id) === String(id));
+  
+  if (!project) {
+    console.error('Proyecto no encontrado en memoria:', id);
+    return;
+  }
+
+  currentProjectId = project.id;
+  currentOwnerId = project.user_id;
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const esAdmin = (user.role || '').toLowerCase() === 'admin';
+  const esDueno = user.id === project.user_id;
+  const puedeEditar = esDueno || esAdmin;
+
+  const modalTitle = document.getElementById('modalTitle') || document.getElementById('modalProjectTitle');
+  const modalDesc = document.getElementById('modalDesc') || document.getElementById('modalProjectDesc');
+  const modalOwner = document.getElementById('modalOwnerName') || document.getElementById('modalProjectOwner');
+
+  if (modalTitle) modalTitle.textContent = project.title || 'Sin Título';
+  if (modalDesc) modalDesc.textContent = project.description || 'Sin descripción detallada';
+  if (modalOwner) {
+    modalOwner.textContent = project.pm_profiles?.full_name || project.pm_profiles?.email || 'Sin asignar';
+  }
+
+  const dateInput = document.getElementById('modalProjectDueDateInput');
+  if (dateInput) {
+    let fechaISO = '';
+    if (project.due_date) {
+      fechaISO = project.due_date.includes('T') ? project.due_date.split('T')[0] : project.due_date;
+    }
+    dateInput.value = fechaISO;
+    dateInput.disabled = !puedeEditar;
+    if (!puedeEditar) {
+      dateInput.classList.add('opacity-60', 'cursor-not-allowed');
+    } else {
+      dateInput.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
+  }
+
+  const statusSelect = document.getElementById('modalProjectStatus');
+  if (statusSelect) {
+    statusSelect.value = (project.status || 'pendiente').toLowerCase();
+    statusSelect.disabled = !puedeEditar;
+    if (!puedeEditar) {
+      statusSelect.classList.add('opacity-60', 'cursor-not-allowed');
+    } else {
+      statusSelect.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
+  }
+
+  const btnAgregarTareaModal = document.getElementById('btnAgregarTareaModal');
+  const projectCommentInput = document.getElementById('projectCommentInput');
+  const btnGuardarAvanceProj = document.getElementById('btnGuardarAvanceProj');
+
+  if (puedeEditar) {
+    if (btnAgregarTareaModal) btnAgregarTareaModal.classList.remove('hidden');
+    if (projectCommentInput) projectCommentInput.disabled = false;
+    if (btnGuardarAvanceProj) btnGuardarAvanceProj.classList.remove('hidden');
+  } else {
+    if (btnAgregarTareaModal) btnAgregarTareaModal.classList.add('hidden');
+    if (projectCommentInput) projectCommentInput.disabled = true;
+    if (btnGuardarAvanceProj) btnGuardarAvanceProj.classList.add('hidden');
+  }
+
+  const newTasksContainer = document.getElementById('newTasksContainer');
+  if (newTasksContainer) newTasksContainer.innerHTML = '';
+
+  const modal = document.getElementById('projectModal');
+  if (modal) modal.classList.remove('hidden');
+
+  await cargarTareas(id);
+  await cargarBitacoraProyecto(id);
+}
+
+async function cambiarEstadoProyecto(projectId, nuevoEstado) {
+  if (!projectId) return;
+
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/projects/${projectId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': token
+      },
+      body: JSON.stringify({ status: nuevoEstado })
+    });
+
+    if (!res.ok) throw new Error('Error al actualizar estado del proyecto');
+
+    await cargarProyectos();
+    if (typeof cargarAccionesCerradas === 'function') {
+      cargarAccionesCerradas();
+    }
+
+  } catch (err) {
+    console.error('Error al cambiar estado del proyecto:', err);
+    alert('Ocurrió un error al intentar cambiar el estado del proyecto.');
+  }
+}
+
+    function cerrarModal() {
+      const modal = document.getElementById('projectModal');
+      if (modal) modal.classList.add('hidden');
+      currentProjectId = null;
+      currentOwnerId = null;
+    }
+
+    async function cargarBitacoraProyecto(projectId) {
+      const token = localStorage.getItem('token');
+      const container = document.getElementById('projectCommentsContainer') || document.getElementById('projectBitacoraList');
+      if (!container) return;
+
+      try {
+        const res = await fetch(`/api/projects/${projectId}/comments`, { headers: { 'x-user-id': token } });
+        if (!res.ok) {
+          container.innerHTML = '<p class="text-xs text-red-500 italic">Error al cargar bitácora.</p>';
+          return;
+        }
+
+        const comments = await res.json();
+        if (!comments.length) {
+          container.innerHTML = '<p class="text-xs text-gray-400 italic">Sin avances registrados en el proyecto.</p>';
+          return;
+        }
+
+        container.innerHTML = comments.map(c => {
+          const autor = c.pm_profiles?.full_name || c.pm_profiles?.email || 'Usuario';
+          const fecha = c.created_at ? new Date(c.created_at).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : '';
+          return `
+            <div class="text-xs border-b pb-1 border-gray-100 last:border-none">
+              <div class="flex justify-between items-center text-[10px] text-gray-500">
+                <strong class="text-teal-900">${escapeHtml(autor)}</strong>
+                <span>${fecha}</span>
+              </div>
+              <p class="text-gray-700 mt-0.5">${escapeHtml(c.text || c.content)}</p>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = '<p class="text-xs text-red-500 italic">Error de conexión al cargar avances.</p>';
+      }
+    }
+
+function formatearFechaLatina(fechaStr) {
+  if (!fechaStr || fechaStr === 'S/F') return 'S/F';
+  const fechaLimpia = fechaStr.split('T')[0];
+  const partes = fechaLimpia.split('-');
+  if (partes.length === 3) {
+    return `${partes[2]}/${partes[1]}/${partes[0]}`; // DD/MM/YYYY
+  }
+  return fechaStr;
+}
+
+
+    async function guardarAvanceProyecto() {
+      const input = document.getElementById('projectCommentInput');
+      const text = input ? input.value.trim() : '';
+      if (!text || !currentProjectId) return;
+
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`/api/projects/${currentProjectId}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user-id': token },
+          body: JSON.stringify({ text, content: text })
+        });
+
+        if (res.ok) {
+          input.value = '';
+          cargarBitacoraProyecto(currentProjectId);
+        } else {
+          alert('Error al guardar el avance.');
+        }
+      } catch (err) {
+        alert('Error al intentar guardar avance.');
+      }
+    }
+
+    function agregarFormularioTareaNuevaModal() {
+      const container = document.getElementById('newTasksContainer');
+      if (!container) return;
+
+      const cardId = 'newTaskCard_' + Date.now();
+      const optionsUsers = profilesList.map(p => {
+        const isOwner = p.id === currentOwnerId;
+        return `<option value="${p.id}" ${isOwner ? 'selected' : ''}>${escapeHtml(p.full_name || p.email)} ${isOwner ? '(Dueño)' : ''}</option>`;
+      }).join('');
+
+      const formHtml = `
+        <div id="${cardId}" class="bg-gray-50 p-3 rounded-lg border-2 border-teal-600/40 space-y-2 text-xs">
+          <div class="flex justify-between items-center font-bold text-teal-900 border-b pb-1">
+            <span>Nueva Acción / Tarea</span>
+            <button onclick="document.getElementById('${cardId}').remove()" class="text-red-600 hover:text-red-800 font-bold">&times; Eliminar</button>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Acción *</label>
+              <input type="text" class="task-title w-full p-2 text-xs border rounded outline-none focus:ring-1 focus:ring-teal-700" placeholder="Nombre de la acción..." required>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">A quién *</label>
+              <select class="task-assignee w-full p-2 text-xs border rounded bg-white outline-none focus:ring-1 focus:ring-teal-700">
+                ${optionsUsers}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-gray-500 uppercase">Descripción</label>
+            <textarea rows="2" class="task-desc w-full p-2 text-xs border rounded outline-none focus:ring-1 focus:ring-teal-700" placeholder="Descripción detallada de la acción..."></textarea>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 pt-1">
+            <div class="flex items-center gap-1">
+              <span class="text-[11px] text-gray-500 font-medium">Prioridad:</span>
+              <select class="task-priority p-1.5 text-xs border rounded bg-white font-semibold outline-none">
+                <option value="low" selected>Baja</option>
+                <option value="medium">Media</option>
+                <option value="high">Alta</option>
+              </select>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <span class="text-[11px] text-gray-500 font-medium">Inicio:</span>
+              <input type="date" class="task-start-date p-1.5 text-xs border rounded outline-none bg-white">
+            </div>
+
+            <div class="flex items-center gap-1">
+              <span class="text-[11px] text-gray-500 font-medium">Fin:</span>
+              <input type="date" class="task-due-date p-1.5 text-xs border rounded outline-none bg-white">
+            </div>
+
+            <button onclick="guardarUnaTarea('${cardId}')" class="ml-auto bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold px-3 py-1.5 rounded transition">
+              Guardar Esta Acción
+            </button>
+          </div>
+        </div>
+      `;
+
+      container.insertAdjacentHTML('beforeend', formHtml);
+    }
+
+    async function guardarUnaTarea(cardId) {
+      const card = document.getElementById(cardId);
+      if (!card || !currentProjectId) return;
+
+      const title = card.querySelector('.task-title').value.trim();
+      if (!title) return alert('Debes ingresar el nombre de la acción.');
+
+      const data = {
+        project_id: currentProjectId,
+        title: title,
+        assigned_to: card.querySelector('.task-assignee').value || null,
+        description: card.querySelector('.task-desc').value,
+        priority: card.querySelector('.task-priority').value,
+        start_date: card.querySelector('.task-start-date').value || null,
+        due_date: card.querySelector('.task-due-date').value || null
+      };
+
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user-id': token },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          card.remove();
+          cargarTareas(currentProjectId);
+        } else {
+          const err = await res.json();
+          alert('Error al guardar la acción: ' + (err.error || 'Intenta nuevamente'));
+        }
+      } catch (err) {
+        alert('Error en el servidor al crear la tarea.');
+      }
+    }
+
+let activeTaskId = null;
+
+async function abrirModalTarea(taskId) {
+  const modal = document.getElementById('taskDetailModal');
+  if (!modal) return;
+
+  modal.dataset.taskId = taskId;
+
+  try {
+    const res = await fetch(`/api/tasks/${taskId}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error("Error al obtener la tarea");
+    
+    const task = await res.json();
+
+    // Poblar Cabecera (Proyecto, Tarea, Fechas)
+    document.getElementById('taskModalProjectName').textContent = task.pm_projects?.title || 'Proyecto Sin Nombre';
+    document.getElementById('taskModalTitle').textContent = task.title || 'Detalle de la Acción';
+    
+    const fInicio = task.start_date ? new Date(task.start_date).toLocaleDateString() : 'S/F';
+    const fFin = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'S/F';
+    document.getElementById('taskModalDates').textContent = `📅 ${fInicio} - ${fFin}`;
+    
+    const asignado = task.assigned_profile?.full_name || 'Sin Asignar';
+    document.getElementById('taskModalAssignee').textContent = `👤 ${asignado}`;
+
+    // Select de estado
+    const statusSelect = document.getElementById('taskStatusSelect');
+    if (statusSelect) statusSelect.value = (task.status || 'pendiente').toLowerCase();
+
+    // Cargar Comentarios/Bitácora de la tarea
+    cargarComentariosTarea(taskId);
+
+    modal.classList.remove('hidden');
+  } catch (e) {
+    console.error("Error al cargar la tarea:", e);
+    alert("No se pudieron cargar los detalles de la acción.");
+  }
+}
+
+function cerrarModalTarea() {
+  const modal = document.getElementById('taskDetailModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function actualizarEstadoTarea(nuevoEstado) {
+  if (!activeTaskId) return;
+
+  try {
+    const res = await fetch(`/api/tasks/${activeTaskId}/status`, {
+      method: 'PATCH',
+      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nuevoEstado })
+    });
+
+    if (res.ok) {
+      alert("Estado de la acción actualizado.");
+      cargarProyectos();
+    }
+  } catch (e) {
+    console.error("Error al actualizar estado:", e);
+  }
+}
+
+async function agregarComentarioTarea(e) {
+  // 1. Detener la recarga del formulario
+  e.preventDefault();
+
+  // 2. Obtener el taskId desde el dataset del modal
+  const modal = document.getElementById('taskDetailModal');
+  const taskId = modal?.dataset?.taskId;
+
+  if (!taskId) {
+    alert("Error: No se encontró el identificador de la tarea.");
+    return;
+  }
+
+  // 3. Capturar el texto del input
+  const input = document.getElementById('newTaskCommentInput');
+  if (!input) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  const token = localStorage.getItem('token');
+
+  try {
+    const res = await fetch(`/api/tasks/${taskId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': token
+      },
+      body: JSON.stringify({ text })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Error: " + (data.error || "No se pudo guardar el avance."));
+      return;
+    }
+
+    // 4. Limpiar campo y recargar la bitácora de la tarea
+    input.value = '';
+    if (typeof cargarComentariosTarea === 'function') {
+      await cargarComentariosTarea(taskId);
+    }
+
+  } catch (err) {
+    console.error('Error al guardar avance:', err);
+    alert('Ocurrió un error de conexión al guardar el avance.');
+  }
+}
+
+  async function cargarTareas(projectId) {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  // Permisos: Permite la edición si es Admin O si es el Dueño del proyecto
+  const esAdmin = (user.role || '').toLowerCase() === 'admin';
+  const esDueno = user.id === currentOwnerId;
+  const puedeEditar = esDueno || esAdmin;
+
+  const listContainer = document.getElementById('taskList') || document.getElementById('projectTasksTable');
+  if (!listContainer) return;
+
+  try {
+    const res = await fetch(`/api/projects/${projectId}/tasks`, { headers: { 'x-user-id': token } });
+    if (!res.ok) {
+      listContainer.innerHTML = '<p class="text-xs text-red-500 italic">Error al cargar acciones.</p>';
+      return;
+    }
+
+    const tasks = await res.json();
+    const tasksCountElem = document.getElementById('tasksCount');
+    if (tasksCountElem) tasksCountElem.textContent = `${tasks.length} acciones`;
+
+    if (!tasks.length) {
+      listContainer.innerHTML = '<p class="text-xs text-gray-400 italic">No hay acciones registradas en este proyecto.</p>';
+      return;
+    }
+
+    listContainer.innerHTML = tasks.map(t => {
+      // Usar el formateador en formato latino DD/MM/YYYY para la vista
+      const inicioStr = formatearFechaLatina(t.start_date);
+      
+      // Formatear la fecha término a YYYY-MM-DD para el input tipo date
+      const finDateValue = t.due_date ? t.due_date.split('T')[0] : '';
+
+      const asignado = profilesList.find(p => p.id === t.assigned_to);
+      const nombreAsignado = asignado ? (asignado.full_name || asignado.email) : 'Sin Asignar';
+      const descHtml = t.description ? `<p class="text-gray-600 text-[11px] bg-white p-2 rounded border border-gray-100"><strong class="text-gray-700">Lo que se necesita:</strong> ${escapeHtml(t.description)}</p>` : '';
+
+      return `
+        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2 text-xs">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="${t.status === 'finalizado' ? 'line-through text-gray-400' : 'text-gray-800 font-bold'}">
+                  ${escapeHtml(t.title)}
+                </span>
+                ${badgePrioridad(t.priority)}
+              </div>
+              <span class="text-[11px] text-teal-800 font-semibold block mt-0.5">👤 ${escapeHtml(nombreAsignado)}</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 shrink-0">
+              <!-- Selección de fechas con Calendario habilitado para Admin/Dueño -->
+              <div class="flex items-center gap-1 bg-white p-1 rounded border border-gray-200">
+                <span class="text-[10px] text-gray-500 font-medium">📅 Inicio: ${inicioStr} | Fin:</span>
+                <input 
+                  type="date" 
+                  value="${finDateValue}" 
+                  ${!puedeEditar ? 'disabled' : ''} 
+                  onchange="cambiarFechaCierreTarea('${t.id}', this.value)" 
+                  class="p-0.5 text-xs border rounded outline-none bg-white text-gray-800 ${!puedeEditar ? 'opacity-60 cursor-not-allowed' : 'focus:ring-1 focus:ring-teal-700'}"
+                />
+              </div>
+
+              <select onchange="cambiarEstadoTarea('${t.id}', this.value)" class="text-xs p-1 border rounded bg-white font-semibold outline-none focus:ring-1 focus:ring-teal-700">
+                <option value="pendiente" ${t.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                <option value="finalizado" ${t.status === 'finalizado' ? 'selected' : ''}>Finalizado</option>
+              </select>
+            </div>
+          </div>
+
+          ${descHtml}
+
+          <div class="pt-2 border-t border-gray-200">
+            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Historial / Bitácora de la Acción:</label>
+            <div id="commentsContainer-${t.id}" class="space-y-1.5 mb-2 max-h-32 overflow-y-auto bg-white p-2 border rounded">
+              <p class="text-[10px] text-gray-400 italic">Cargando comentarios...</p>
+            </div>
+
+            <div class="flex gap-2">
+              <input type="text" id="commentInput-${t.id}" placeholder="Anotar nuevo avance..." class="flex-1 p-1.5 text-xs border rounded bg-white outline-none focus:ring-1 focus:ring-teal-700">
+              <button onclick="guardarComentarioTarea('${t.id}')" class="bg-teal-700 hover:bg-teal-800 text-white font-bold text-[11px] px-2.5 py-1 rounded transition">
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    tasks.forEach(t => cargarComentariosTarea(t.id));
+  } catch (err) {
+    listContainer.innerHTML = '<p class="text-xs text-red-500 italic">Error en la comunicación con el servidor.</p>';
+  }
+}
+
+async function actualizarFechaTarea(tareaId, nuevaFecha) {
+  try {
+    const res = await fetch(`/api/tasks/${tareaId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ due_date: nuevaFecha })
+    });
+
+    if (!res.ok) throw new Error('No se pudo actualizar la fecha');
+  } catch (err) {
+    console.error('Error al actualizar fecha de tarea:', err);
+    alert('Ocurrió un error al guardar la nueva fecha de la tarea.');
+  }
+}
+
+
+async function cargarComentariosTarea(taskId) {
+  const token = localStorage.getItem('token');
+  // Busca primero el contenedor dinámico (vista de lista) y si no lo halla, usa el del modal
+  const container = document.getElementById(`commentsContainer-${taskId}`) || document.getElementById('taskCommentsList');
+  if (!container) return;
+  
+  try {
+    const res = await fetch(`/api/tasks/${taskId}/comments`, { headers: { 'x-user-id': token } });
+    if (!res.ok) {
+      container.innerHTML = '<p class="text-[10px] text-red-500 italic">Error al cargar bitácora.</p>';
+      return;
+    }
+
+    let comments = await res.json();
+    if (!comments.length) {
+      container.innerHTML = '<p class="text-[10px] text-gray-400 italic">Sin avances registrados.</p>';
+      return;
+    }
+
+    // Invertimos el arreglo para mostrar los últimos avances primero
+    comments.reverse();
+
+    container.innerHTML = comments.map(c => {
+      const autor = c.pm_profiles?.full_name || c.pm_profiles?.email || 'Usuario';
+      const fecha = c.created_at ? new Date(c.created_at).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      return `
+        <div class="text-[11px] border-b pb-1 border-gray-100 last:border-none">
+          <div class="flex justify-between items-center text-[10px] text-gray-500">
+            <strong>${escapeHtml(autor)}</strong>
+            <span>${fecha}</span>
+          </div>
+          <p class="text-gray-700 mt-0.5">${escapeHtml(c.text || c.content)}</p>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = '<p class="text-[10px] text-red-500 italic">Error al obtener comentarios.</p>';
+  }
+}
+
+    async function guardarComentarioTarea(taskId) {
+  // Intentar obtener el input del modal individual o del modal del proyecto
+  const input = document.getElementById(`modalTaskCommentInput`) || 
+                document.getElementById(`commentInput-${taskId}`);
+
+  if (!input) {
+    alert('No se encontró el campo de texto.');
+    return;
+  }
+
+  const text = input.value.trim();
+
+  if (!text) {
+    alert('Por favor escribe un avance antes de guardar.');
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+
+  try {
+    const res = await fetch(`/api/tasks/${taskId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': token
+      },
+      body: JSON.stringify({ text })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Error: " + (data.error || "No se pudo guardar el avance."));
+      return;
+    }
+
+    // Limpiar el campo de texto
+    input.value = '';
+
+    // Refrescar el historial según dónde estés
+    if (typeof cargarComentariosTarea === 'function') {
+      await cargarComentariosTarea(taskId);
+    }
+    
+    // Si estás en el modal independiente de la tarea, refrescar sus comentarios
+    if (typeof cargarComentariosModalTarea === 'function') {
+      await cargarComentariosModalTarea(taskId);
+    }
+
+  } catch (err) {
+    console.error('Error al guardar comentario:', err);
+    alert('Ocurrió un error al conectar con el servidor.');
+  }
+}
+
+    async function cambiarEstadoTarea(taskId, status) {
+      const token = localStorage.getItem('token');
+      try {
+        await fetch(`/api/tasks/${taskId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'x-user-id': token },
+          body: JSON.stringify({ status })
+        });
+        
+        if (currentProjectId) cargarTareas(currentProjectId);
+        cargarAccionesEnProceso();
+      } catch (err) {
+        console.error('Error al cambiar el estado:', err);
+      }
+    }
+
+    // --- VISTA ACCIONES EN PROCESO ---
+async function cargarAccionesEnProceso() {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const esAdmin = (user.role || '').toLowerCase() === 'admin';
+  const tbody = document.getElementById('tabla-acciones-proceso-body') || document.getElementById('collabProjectsTable');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/tasks/in-progress', { headers: { 'x-user-id': token } });
+    if (!res.ok) throw new Error('Error al obtener acciones');
+
+    let tareas = await res.json();
+    tareas = tareas.filter(t => (t.status || 'pendiente').toLowerCase() !== 'finalizado');
+
+    if (!esAdmin) {
+      tareas = tareas.filter(t => String(t.assigned_to) === String(user.id));
+    }
+
+    if (!tareas.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-xs text-slate-400 italic">No hay acciones pendientes en proceso actualmente.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = tareas.map(t => {
+      const nombreAccion = escapeHtml(t.title || 'Sin Título');
+      const nombreProyecto = escapeHtml(t.pm_projects?.title || 'Proyecto Sin Nombre');
+      const duenoAccion = escapeHtml(t.assigned_profile?.full_name || t.assigned_profile?.email || 'Sin Asignar');
+      const duenoProyecto = escapeHtml(t.pm_projects?.pm_profiles?.full_name || 'Sin Asignar');
+      
+      const fechaInicio = formatFecha(t.start_date);
+      const fechaFin = formatFecha(t.due_date);
+      const rangoFechas = `📅 ${fechaInicio} - ${fechaFin}`;
+
+      let ultimoComentarioFecha = null;
+      if (Array.isArray(t.pm_comments) && t.pm_comments.length > 0) {
+        const comentariosOrdenados = [...t.pm_comments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        ultimoComentarioFecha = comentariosOrdenados[0].created_at;
+      }
+
+      const rawUpdate = ultimoComentarioFecha || t.created_at;
+      const ultimoUpdate = rawUpdate 
+        ? new Date(rawUpdate).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) 
+        : 'Sin registros';
+
+      const taskId = t.id || t.task_id;
+
+      return `
+        <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100 text-xs">
+          <td class="p-3 font-semibold text-slate-800">${duenoAccion}</td>
+          <td class="p-3 font-semibold text-teal-900">${nombreAccion}</td>
+          <td class="p-3 text-slate-600">${nombreProyecto}</td>
+          <td class="p-3 text-slate-600">${duenoProyecto}</td>
+          <td class="p-3 text-slate-600 whitespace-nowrap">${rangoFechas}</td>
+          <td class="p-3 text-slate-500 whitespace-nowrap">${ultimoUpdate}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 text-[10px] rounded font-bold uppercase bg-amber-100 text-amber-800">
+              ${escapeHtml(t.status || 'Pendiente')}
+            </span>
+          </td>
+          <td class="p-3 text-right whitespace-nowrap">
+            <button 
+              onclick="abrirModalTarea('${taskId}')" 
+              class="bg-teal-800 hover:bg-teal-900 text-white font-semibold text-xs px-2.5 py-1 rounded transition">
+              Ver / Actualizar
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error en cargarAccionesEnProceso:', err);
+    tbody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-xs text-red-500 italic">Error al cargar la lista de acciones.</td></tr>';
+  }
+}
+
+    // --- MÓDULO ADMINISTRATIVO DE ACCESOS Y USUARIOS ---
+    async function loadUsersView() {
+      try {
+        const userId = localStorage.getItem('userId') || localStorage.getItem('token');
+        if (!userId) return console.error('Sesión no encontrada');
+
+        const res = await fetch('/api/profiles', {
+          headers: { 'x-user-id': userId }
+        });
+
+        if (!res.ok) throw new Error(`HTTP: ${res.status}`);
+
+        listaUsuarios = await res.json();
+        const tbody = document.getElementById('users-table-body') || document.getElementById('usersTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+
+        if (!listaUsuarios.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-xs text-slate-400 italic">No hay usuarios registrados.</td></tr>';
+          return;
+        }
+
+        listaUsuarios.forEach(u => {
+          const areaTexto = escapeHtml(u.area || '-');
+          const rolRaw = (u.role || 'user').trim();
+          const esAdmin = rolRaw.toLowerCase() === 'admin';
+
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 transition-colors border-b border-slate-100 text-xs';
+          tr.innerHTML = `
+            <td class="p-4 font-medium text-slate-800">${escapeHtml(u.full_name || 'Sin nombre')}</td>
+            <td class="p-4 text-slate-600">${escapeHtml(u.email || '-')}</td>
+            <td class="p-4 text-slate-600">${areaTexto}</td>
+            <td class="p-4">
+              <span class="px-2 py-1 text-xs rounded-full font-semibold ${esAdmin ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}">
+                ${escapeHtml(rolRaw)}
+              </span>
+            </td>
+            <td class="p-4 text-right space-x-2 whitespace-nowrap">
+              <button onclick="openModalEditarUsuario('${u.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded font-medium">Editar</button>
+              <button onclick="openModalPassword('${u.id}')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-2.5 py-1.5 rounded font-medium">🔑 Clave</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Error cargando usuarios:', err);
+      }
+    }
+
+    function openModalCrearUsuario() {
+      const modal = document.getElementById('modal-usuario') || document.getElementById('userModal');
+      const title = document.getElementById('modal-usuario-title');
+      if (title) title.innerText = 'Crear Nuevo Usuario';
+
+      const inputs = {
+        id: document.getElementById('user-id-edit') || document.getElementById('userId'),
+        name: document.getElementById('user-full-name') || document.getElementById('userName'),
+        email: document.getElementById('user-email') || document.getElementById('userEmail'),
+        pass: document.getElementById('user-password') || document.getElementById('userPassword'),
+        role: document.getElementById('user-role') || document.getElementById('userRole'),
+        area: document.getElementById('user-area') || document.getElementById('userArea')
+      };
+
+      if (inputs.id) inputs.id.value = '';
+      if (inputs.name) inputs.name.value = '';
+      if (inputs.email) inputs.email.value = '';
+      if (inputs.pass) inputs.pass.value = '';
+      if (inputs.role) inputs.role.value = 'user';
+      if (inputs.area) inputs.area.value = '';
+
+      const containerPass = document.getElementById('container-user-password');
+      if (containerPass) containerPass.classList.remove('hidden');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function openModalEditarUsuario(userId) {
+      const user = listaUsuarios.find(u => String(u.id) === String(userId));
+      if (!user) return;
+
+      const modal = document.getElementById('modal-usuario') || document.getElementById('userModal');
+      const title = document.getElementById('modal-usuario-title');
+      if (title) title.innerText = 'Editar Usuario';
+
+      const inputs = {
+        id: document.getElementById('user-id-edit') || document.getElementById('userId'),
+        name: document.getElementById('user-full-name') || document.getElementById('userName'),
+        email: document.getElementById('user-email') || document.getElementById('userEmail'),
+        role: document.getElementById('user-role') || document.getElementById('userRole'),
+        area: document.getElementById('user-area') || document.getElementById('userArea')
+      };
+
+      if (inputs.id) inputs.id.value = user.id;
+      if (inputs.name) inputs.name.value = user.full_name || '';
+      if (inputs.email) inputs.email.value = user.email || '';
+      if (inputs.role) inputs.role.value = user.role || 'user';
+      if (inputs.area) inputs.area.value = user.area || '';
+
+      const containerPass = document.getElementById('container-user-password');
+      if (containerPass) containerPass.classList.add('hidden');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeModalUsuario() {
+      const modal = document.getElementById('modal-usuario') || document.getElementById('userModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function guardarUsuario(e) {
+      e.preventDefault();
+      const id = (document.getElementById('user-id-edit') || document.getElementById('userId'))?.value;
+      const full_name = (document.getElementById('user-full-name') || document.getElementById('userName'))?.value;
+      const email = (document.getElementById('user-email') || document.getElementById('userEmail'))?.value;
+      const password = (document.getElementById('user-password') || document.getElementById('userPassword'))?.value;
+      const role = (document.getElementById('user-role') || document.getElementById('userRole'))?.value;
+      const area = (document.getElementById('user-area') || document.getElementById('userArea'))?.value;
+
+      const userId = localStorage.getItem('userId') || localStorage.getItem('token');
+      const url = id ? `/api/users/${id}` : '/api/users';
+      const method = id ? 'PATCH' : 'POST';
+      const body = id 
+        ? { full_name, role, area }
+        : { full_name, email, password, role, area };
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': userId
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error procesando usuario');
+
+        closeModalUsuario();
+        loadUsersView();
+        cargarPerfiles();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function openModalPassword(userId) {
+      const passIdElem = document.getElementById('pass-user-id');
+      const passInput = document.getElementById('new-password');
+      const modal = document.getElementById('modal-password');
+
+      if (passIdElem) passIdElem.value = userId;
+      if (passInput) passInput.value = '';
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeModalPassword() {
+      const modal = document.getElementById('modal-password');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function guardarNuevaPassword(e) {
+      e.preventDefault();
+      const targetUserId = document.getElementById('pass-user-id').value;
+      const password = document.getElementById('new-password').value;
+
+      const userId = localStorage.getItem('userId') || localStorage.getItem('token');
+
+      try {
+        const res = await fetch(`/api/users/${targetUserId}/password`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': userId
+          },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al cambiar contraseña');
+
+        alert('Contraseña actualizada correctamente');
+        closeModalPassword();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // --- EVENT LISTENERS E INICIALIZACIÓN DE LA APP ---
+    document.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('token')) {
+        mostrarApp();
+      } else {
+        const loginScreen = document.getElementById('loginScreen');
+        const appContainer = document.getElementById('appContainer');
+        if (loginScreen) loginScreen.classList.remove('hidden');
+        if (appContainer) appContainer.classList.add('hidden');
+      }
+
+      // Eventos Form Submits
+      const loginForm = document.getElementById('loginForm');
+      if (loginForm) loginForm.addEventListener('submit', login);
+
+      const formUsuario = document.getElementById('form-usuario') || document.getElementById('formUser');
+      if (formUsuario) formUsuario.addEventListener('submit', guardarUsuario);
+
+      const formPassword = document.getElementById('form-password');
+      if (formPassword) formPassword.addEventListener('submit', guardarNuevaPassword);
+    });
+
+// --- CAMBIAR FECHA DE CIERRE DE PROYECTO ---
+async function cambiarFechaCierreProyecto(projectId, nuevaFecha) {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const token = localStorage.getItem('token');
+
+  // 1. Validar si es el dueño O Administrador
+  const esAdmin = (user.role || '').toLowerCase() === 'admin';
+  const esDueno = user.id === currentOwnerId;
+
+  if (!esDueno && !esAdmin) {
+    alert("Solo el dueño del proyecto o un Administrador pueden cambiar la fecha de cierre.");
+    return;
+  }
+
+  if (!nuevaFecha) return;
+
+  // 2. Solicitar motivo obligatoriamente
+  const motivo = prompt("Por favor ingresa el motivo del cambio de fecha de cierre del proyecto:");
+  if (!motivo || !motivo.trim()) {
+    alert("El cambio de fecha fue cancelado. Se requiere ingresar un motivo.");
+    // Recargar el modal para restaurar el valor anterior en el selector
+    if (typeof abrirProyecto === 'function') abrirProyecto(projectId);
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/projects/${projectId}/due-date`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': token
+      },
+      body: JSON.stringify({
+        due_date: nuevaFecha,
+        motivo: motivo.trim(),
+        reason: motivo.trim() // Enviamos 'reason' también por compatibilidad con el backend
+      })
+    });
+
+    if (res.ok) {
+      alert("Fecha de cierre del proyecto actualizada con éxito.");
+      await cargarBitacoraProyecto(projectId); // Actualiza la bitácora
+      if (typeof cargarProyectos === 'function') await cargarProyectos(); // Refresca la tabla principal
+    } else {
+      const err = await res.json();
+      alert("Error: " + (err.error || "No se pudo actualizar la fecha de cierre."));
+      if (typeof abrirProyecto === 'function') abrirProyecto(projectId);
+    }
+  } catch (e) {
+    console.error("Error al actualizar fecha de cierre del proyecto:", e);
+    alert("Error de conexión al intentar actualizar la fecha.");
+  }
+}
+
+// --- CAMBIAR FECHA DE CIERRE DE TAREA / ACCIÓN ---
+async function cambiarFechaCierreTarea(tareaId, nuevaFecha) {
+  if (!nuevaFecha) return;
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const token = localStorage.getItem('token');
+
+  // 1. Validar permisos en el frontend (Dueño o Admin)
+  const esAdmin = (user.role || '').toLowerCase() === 'admin';
+  const esDueno = user.id === currentOwnerId;
+
+  if (!esDueno && !esAdmin) {
+    alert("Solo el dueño del proyecto o un Administrador pueden modificar la fecha de la acción.");
+    if (typeof cargarTareas === 'function') await cargarTareas(currentProjectId);
+    return;
+  }
+
+  // 2. Pedir motivo obligatorio (requerido por tu backend)
+  const motivo = prompt("Por favor ingresa el motivo del cambio de fecha de la acción:");
+  if (!motivo || !motivo.trim()) {
+    alert("El cambio de fecha fue cancelado. Se requiere ingresar un motivo.");
+    if (typeof cargarTareas === 'function') await cargarTareas(currentProjectId);
+    return;
+  }
+
+  try {
+    // 3. Petición PATCH al endpoint exacto: /api/tasks/:id/due-date
+    const res = await fetch(`/api/tasks/${tareaId}/due-date`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': token
+      },
+      body: JSON.stringify({
+        due_date: nuevaFecha,
+        reason: motivo.trim()
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert("Error: " + (data.error || "No se pudo actualizar la fecha de la acción."));
+      if (typeof cargarTareas === 'function') await cargarTareas(currentProjectId);
+      return;
+    }
+
+    // 4. Refrescar las tareas y su historial
+    if (typeof cargarTareas === 'function') await cargarTareas(currentProjectId);
+  } catch (err) {
+    console.error("Error al actualizar fecha de la tarea:", err);
+    alert("Error de conexión al intentar actualizar la fecha.");
+  }
+}
+
+// --- RENDERIZADO DE MÉTRICAS Y KPIS DE LAS TARJETAS ---
+function actualizarMetricasCards(proyectos = [], tareas = []) {
+  // 1. Proyectos Activos
+  const elemProyectosActivos = document.getElementById('kpiProyectosActivos');
+  if (elemProyectosActivos) {
+    const activos = proyectos.filter(p => (p.status || '').toLowerCase() === 'activo').length;
+    elemProyectosActivos.textContent = activos;
+  }
+
+  // 2. Acciones / Tareas Pendientes
+  const elemTareasPendientes = document.getElementById('kpiTareasPendientes');
+  if (elemTareasPendientes) {
+    const pendientes = tareas.filter(t => (t.status || '').toLowerCase() === 'pendiente').length;
+    elemTareasPendientes.textContent = pendientes;
+  }
+
+  // 3. Acciones Finalizadas
+  const elemTareasFinalizadas = document.getElementById('kpiTareasFinalizadas');
+  if (elemTareasFinalizadas) {
+    const finalizadas = tareas.filter(t => (t.status || '').toLowerCase() === 'finalizado').length;
+    elemTareasFinalizadas.textContent = finalizadas;
+  }
+}
+
+// --- MÓDULO DE CAMBIO DE CONTRASEÑA (COMPLETACIÓN) ---
+function closeModalPassword() {
+  const modal = document.getElementById('modal-password');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function guardarNuevaPassword(e) {
+  if (e) e.preventDefault();
+  const id = document.getElementById('pass-user-id')?.value;
+  const newPassword = document.getElementById('new-password')?.value;
+
+  if (!id || !newPassword) {
+    return alert('Por favor ingresa la nueva contraseña.');
+  }
+
+  const token = localStorage.getItem('token');
+  try {
+    const res = await fetch(`/api/users/${id}/password`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': token
+      },
+      body: JSON.stringify({ password: newPassword })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'No se pudo actualizar la contraseña');
+    }
+
+    alert('Contraseña actualizada con éxito.');
+    closeModalPassword();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// --- CORRECCIÓN DE LA VARIABLE activeTaskId EN ABRIR MODAL ---
+// Sustituye o actualiza tu función abrirModalTarea con esta asignación:
+const _abrirModalTareaOriginal = abrirModalTarea;
+abrirModalTarea = async function(taskId) {
+  activeTaskId = taskId; // Asigna el ID globalmente antes de abrir el modal
+  if (typeof _abrirModalTareaOriginal === 'function') {
+    await _abrirModalTareaOriginal(taskId);
+  }
+};
+
+async function abrirGantt(projectId) {
+  const modal = document.getElementById('modalGantt');
+  const tbody = document.getElementById('ganttTableBody');
+  const scaleHeader = document.getElementById('ganttScaleHeader');
+  if (!modal || !tbody) return;
+
+  modal.classList.remove('hidden');
+  tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 font-medium italic animate-pulse">Cargando cronograma visual...</td></tr>`;
+
+  try {
+    const [resProject, resTasks] = await Promise.all([
+      fetch(`/api/projects`, { headers: typeof getHeaders === 'function' ? getHeaders() : {} }),
+      fetch(`/api/projects/${projectId}/tasks`, { headers: typeof getHeaders === 'function' ? getHeaders() : {} })
+    ]);
+
+    let project = null;
+    if (resProject.ok) {
+      const proyectosData = await resProject.json();
+      const lista = proyectosData.own || (Array.isArray(proyectosData) ? proyectosData : []);
+      project = lista.find(p => String(p.id) === String(projectId));
+    }
+    
+    if (!project) {
+      project = (window.ownProjects || window.proyectosCargados || []).find(p => String(p.id) === String(projectId));
+    }
+
+    const tareas = resTasks.ok ? await resTasks.json() : [];
+
+    if (!project) {
+      tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-rose-500 font-bold">No se encontró información del proyecto.</td></tr>`;
+      return;
+    }
+
+    // 1. Rango de Fechas del Proyecto
+    const fInicioProj = project.start_date ? new Date(project.start_date) : new Date(2026, 8, 7);
+    const fFinProj = project.due_date ? new Date(project.due_date) : new Date(2026, 8, 30);
+    
+    const diaInicioProj = isNaN(fInicioProj.getDate()) ? 7 : fInicioProj.getDate();
+    const diaFinProj = isNaN(fFinProj.getDate()) ? 30 : fFinProj.getDate();
+    const totalDiasProyecto = Math.max(1, diaFinProj - diaInicioProj + 1);
+
+    // DÍA DE HOY (Para la marca vertical)
+    const hoyDia = new Date().getDate();
+
+    // Renderizar días en el header con destaque de "HOY"
+    let headersHTML = '';
+    for (let d = diaInicioProj; d <= diaFinProj; d++) {
+      const esHoy = d === hoyDia;
+      headersHTML += `
+        <span class="flex-1 text-[10px] text-center font-bold ${esHoy ? 'bg-teal-600 text-white rounded-md shadow-sm py-0.5' : 'text-slate-500'}">
+          ${d}
+        </span>`;
+    }
+    scaleHeader.innerHTML = headersHTML;
+
+    // 2. Métricas
+    const totalTareas = tareas.length;
+    const tareasFinalizadas = tareas.filter(t => (t.status || '').toLowerCase() === 'finalizado').length;
+    const pctProyecto = totalTareas > 0 ? Math.round((tareasFinalizadas / totalTareas) * 100) : 0;
+    const dueñoProyecto = project.pm_profiles?.full_name || project.owner_name || 'Alonso Vargas';
+
+    let htmlRows = '';
+
+    // 3. FILA DEL PROYECTO PRINCIPAL
+    htmlRows += `
+      <tr class="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all">
+        <td class="p-3.5 rounded-l-xl font-bold text-slate-800 text-sm flex items-center gap-2">
+          <span class="p-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs">📁</span>
+          ${escapeHtml(project.title || 'lotes')}
+        </td>
+        <td class="p-3.5 text-slate-700 font-semibold text-xs">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full">
+            👤 ${escapeHtml(dueñoProyecto)}
+          </span>
+        </td>
+        <td class="p-3.5">
+          <span class="px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-teal-100 text-teal-800 border border-teal-200 uppercase tracking-wider">
+            ${project.status || 'PLANNING'}
+          </span>
+        </td>
+        <td class="p-3.5 rounded-r-xl">
+          <div class="w-full bg-slate-100 h-6 rounded-lg overflow-hidden relative flex items-center border border-slate-200/80 shadow-inner">
+            <div class="bg-teal-700 gantt-striped h-full transition-all duration-700 flex items-center justify-center text-[10px] text-white font-black shadow-md" style="width: ${pctProyecto}%">
+              ${pctProyecto > 8 ? pctProyecto + '%' : ''}
+            </div>
+            ${pctProyecto <= 8 ? `<span class="text-[10px] text-slate-700 font-extrabold ml-2">${pctProyecto}%</span>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+
+    // 4. FILAS DE ACCIONES (Fondo recortado a las fechas reales)
+    if (tareas.length === 0) {
+      htmlRows += `<tr><td colspan="4" class="p-5 text-center text-slate-400 italic">No hay acciones registradas en este proyecto.</td></tr>`;
+    } else {
+      tareas.forEach((t) => {
+        const estado = (t.status || 'Pendiente').toLowerCase();
+        const esFinalizado = estado === 'finalizado';
+        
+        const dueñoAccion = t.assigned_user_name || t.user_name || t.assigned_to_name || t.assigned_profile?.full_name || 'Alonso Vargas';
+        const tituloAccion = t.title || t.task_title || 'Acción';
+
+        const startTask = t.start_date ? new Date(t.start_date) : fInicioProj;
+        const dueTask = t.due_date ? new Date(t.due_date) : new Date(2026, 8, 11);
+
+        const diaStartTask = isNaN(startTask.getDate()) ? 7 : startTask.getDate();
+        const diaDueTask = isNaN(dueTask.getDate()) ? 11 : dueTask.getDate();
+
+        const offsetDias = Math.max(0, diaStartTask - diaInicioProj);
+        const duracionDias = Math.max(1, diaDueTask - diaStartTask + 1);
+
+        const marginLeftPct = (offsetDias / totalDiasProyecto) * 100;
+        const widthPct = (duracionDias / totalDiasProyecto) * 100;
+
+        // Estilos de la barra
+        const bgBarraAccion = esFinalizado 
+          ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-emerald-200' 
+          : 'bg-gradient-to-r from-amber-400 to-orange-400 shadow-amber-200';
+          
+        const badgeEstado = esFinalizado 
+          ? `<span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">✓ Finalizado</span>`
+          : `<span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-200">⏳ Pendiente</span>`;
+
+        htmlRows += `
+          <tr class="bg-white/80 hover:bg-white rounded-xl transition-all border border-slate-100">
+            <td class="p-3 pl-7 font-semibold text-slate-700 text-xs">
+              <span class="text-slate-300 font-mono mr-1">└─</span> ${escapeHtml(tituloAccion)}
+            </td>
+            <td class="p-3 text-slate-600 text-xs">
+              <span class="inline-flex items-center gap-1 text-slate-600 font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                ${escapeHtml(dueñoAccion)}
+              </span>
+            </td>
+            <td class="p-3">${badgeEstado}</td>
+            <td class="p-3">
+              <!-- Contenedor transparente para respetar la cuadrícula -->
+              <div class="w-full bg-transparent h-4 relative">
+                
+                <!-- Cápsula con la duración EXACTA de la acción (Fondo gris neutro) -->
+                <div class="absolute top-0 h-full bg-slate-200/80 rounded-full overflow-hidden border border-slate-300/50 shadow-inner"
+                     style="left: ${marginLeftPct}%; width: ${widthPct}%; min-width: 12px;"
+                     title="Del día ${diaStartTask} al ${diaDueTask}">
+                  
+                  <!-- Indicador / Barra de la tarea dentro de su propio límite -->
+                  <div class="${bgBarraAccion} h-full rounded-full transition-all duration-500 flex items-center justify-end pr-1 w-full shadow-sm">
+                    <span class="w-1.5 h-1.5 bg-white/80 rounded-full animate-ping"></span>
+                  </div>
+
+                </div>
+
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    tbody.innerHTML = htmlRows;
+
+  } catch (err) {
+    console.error("Error al cargar la Carta Gantt:", err);
+    tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-rose-500 font-bold">Error al procesar el cronograma visual.</td></tr>`;
+  }
+}
+
+function cerrarModalGantt() {
+  document.getElementById('modalGantt')?.classList.add('hidden');
+}
+
+
+
+</script>
+</body>
+</html>
