@@ -1,13 +1,16 @@
 import nodemailer from 'nodemailer';
 
-// Transportador SMTP de Google Workspace
+// Transportador SMTP usando Puerto 587 (Compatible con Render)
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false, // Debe ser false para el puerto 587 (usa STARTTLS)
   auth: {
-    user: 'informacion@novovet.cl', // ⚠️ Reemplaza con tu correo de Google Corporativo
-    pass: 'ycuaygsqjrhnklzn'                    // La contraseña de aplicación generada
+    user: process.env.GMAIL_USER || 'informacion@novovet.cl',
+    pass: process.env.GMAIL_PASS || 'ycuaygsqjrhnklzn'
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
@@ -17,9 +20,11 @@ const transporter = nodemailer.createTransport({
 export async function enviarCorreo({ to, subject, html }) {
   if (!to) return false;
 
+  const correoEmisor = process.env.GMAIL_USER || 'informacion@novovet.cl';
+
   try {
     const info = await transporter.sendMail({
-      from: '"Gestión de Proyectos" <tu-correo-corporativo@tuempresa.com>', // ⚠️ Reemplaza con tu correo
+      from: `"Gestión de Proyectos" <${correoEmisor}>`,
       to: to,
       subject: subject,
       html: html
