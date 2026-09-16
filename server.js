@@ -886,6 +886,46 @@ app.patch('/api/projects/:id/due-date', verificarAutenticacion, async (req, res)
   }
 });
 
+// ELIMINAR PROYECTO Y TODAS SUS TAREAS/ACCIONES ASOCIADAS
+app.delete('/api/projects/:id', verificarAutenticacion, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Obtener las IDs de todas las tareas del proyecto
+    const { data: tasks } = await db
+      .from('pm_tasks')
+      .select('id')
+      .eq('project_id', id);
+
+    if (tasks && tasks.length > 0) {
+      const taskIds = tasks.map(t => t.id);
+
+      // 2. Eliminar comentarios de las tareas
+      await db.from('pm_comments').delete().in('task_id', taskIds);
+
+      // 3. Eliminar las tareas del proyecto
+      await db.from('pm_tasks').delete().eq('project_id', id);
+    }
+
+    // 4. Eliminar comentarios/bitácora del proyecto
+    await db.from('pm_project_comments').delete().eq('project_id', id);
+
+    // 5. Eliminar el proyecto
+    const { error } = await db
+      .from('pm_projects')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.json({ message: 'Proyecto y sus acciones asociadas fueron eliminados correctamente.' });
+  } catch (err) {
+    console.error('Error al eliminar proyecto:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // ACTUALIZAR FECHA DE CIERRE DE UNA TAREA
 app.patch('/api/tasks/:id/due-date', verificarAutenticacion, async (req, res) => {
   const { due_date, reason } = req.body;
