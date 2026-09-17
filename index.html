@@ -2539,6 +2539,9 @@ async function abrirGantt(projectId) {
       return;
     }
 
+    // Obtenemos la lista global de perfiles
+    const perfiles = window.profilesList || (typeof profilesList !== 'undefined' ? profilesList : []);
+
     // 1. Rango de Fechas del Proyecto
     const fInicioProj = project.start_date ? new Date(project.start_date) : new Date(2026, 8, 7);
     const fFinProj = project.due_date ? new Date(project.due_date) : new Date(2026, 8, 30);
@@ -2559,13 +2562,15 @@ async function abrirGantt(projectId) {
           ${d}
         </span>`;
     }
-    scaleHeader.innerHTML = headersHTML;
+    if (scaleHeader) scaleHeader.innerHTML = headersHTML;
 
-    // 2. Métricas
+    // 2. Métricas y Dueño del Proyecto dinámico
     const totalTareas = tareas.length;
     const tareasFinalizadas = tareas.filter(t => (t.status || '').toLowerCase() === 'finalizado').length;
     const pctProyecto = totalTareas > 0 ? Math.round((tareasFinalizadas / totalTareas) * 100) : 0;
-    const dueñoProyecto = project.pm_profiles?.full_name || project.owner_name || 'Alonso Vargas';
+    
+    const pOwner = perfiles.find(p => String(p.id) === String(project.owner_id || project.user_id || project.pm_id));
+    const dueñoProyecto = pOwner ? (pOwner.full_name || pOwner.email) : (project.pm_profiles?.full_name || project.owner_name || 'Sin Asignar');
 
     let htmlRows = '';
 
@@ -2574,7 +2579,7 @@ async function abrirGantt(projectId) {
       <tr class="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all">
         <td class="p-3.5 rounded-l-xl font-bold text-slate-800 text-sm flex items-center gap-2">
           <span class="p-1.5 bg-amber-100 text-amber-700 rounded-lg text-xs">📁</span>
-          ${escapeHtml(project.title || 'lotes')}
+          ${escapeHtml(project.title || 'Proyecto')}
         </td>
         <td class="p-3.5 text-slate-700 font-semibold text-xs">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full">
@@ -2597,7 +2602,7 @@ async function abrirGantt(projectId) {
       </tr>
     `;
 
-    // 4. FILAS DE ACCIONES (Fondo recortado a las fechas reales)
+    // 4. FILAS DE ACCIONES (Dueños mapeados dinámicamente)
     if (tareas.length === 0) {
       htmlRows += `<tr><td colspan="4" class="p-5 text-center text-slate-400 italic">No hay acciones registradas en este proyecto.</td></tr>`;
     } else {
@@ -2605,7 +2610,12 @@ async function abrirGantt(projectId) {
         const estado = (t.status || 'Pendiente').toLowerCase();
         const esFinalizado = estado === 'finalizado';
         
-        const dueñoAccion = t.assigned_user_name || t.user_name || t.assigned_to_name || t.assigned_profile?.full_name || 'Alonso Vargas';
+        // Mapeo dinámico del usuario asignado a la acción
+        const tOwner = perfiles.find(p => String(p.id) === String(t.assigned_to));
+        const dueñoAccion = tOwner 
+          ? (tOwner.full_name || tOwner.email) 
+          : (t.assigned_user_name || t.user_name || t.assigned_to_name || t.assigned_profile?.full_name || 'Sin Asignar');
+
         const tituloAccion = t.title || t.task_title || 'Acción';
 
         const startTask = t.start_date ? new Date(t.start_date) : fInicioProj;
@@ -2642,21 +2652,16 @@ async function abrirGantt(projectId) {
             </td>
             <td class="p-3">${badgeEstado}</td>
             <td class="p-3">
-              <!-- Contenedor transparente para respetar la cuadrícula -->
               <div class="w-full bg-transparent h-4 relative">
-                
-                <!-- Cápsula con la duración EXACTA de la acción (Fondo gris neutro) -->
                 <div class="absolute top-0 h-full bg-slate-200/80 rounded-full overflow-hidden border border-slate-300/50 shadow-inner"
                      style="left: ${marginLeftPct}%; width: ${widthPct}%; min-width: 12px;"
                      title="Del día ${diaStartTask} al ${diaDueTask}">
                   
-                  <!-- Indicador / Barra de la tarea dentro de su propio límite -->
                   <div class="${bgBarraAccion} h-full rounded-full transition-all duration-500 flex items-center justify-end pr-1 w-full shadow-sm">
                     <span class="w-1.5 h-1.5 bg-white/80 rounded-full animate-ping"></span>
                   </div>
 
                 </div>
-
               </div>
             </td>
           </tr>
