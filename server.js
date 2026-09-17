@@ -73,11 +73,14 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
+  // 💡 Limpiamos el email: quitamos espacios y convertimos a minúsculas
+  const cleanEmail = (email || '').trim().toLowerCase();
+
   try {
     const { data: profile, error } = await db
       .from('pm_profiles')
       .select('*')
-      .eq('email', email)
+      .ilike('email', cleanEmail) // 💡 ilike busca sin importar mayúsculas/minúsculas en Supabase
       .maybeSingle();
 
     if (error || !profile) {
@@ -97,6 +100,7 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // 2. PROYECTOS
 app.get('/api/projects', verificarAutenticacion, async (req, res) => {
